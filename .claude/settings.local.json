@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"/c/Program Files/Epic Games/UE_5.8/Engine\" && echo \"=== Quinn/Manny/Mannequin SKM ===\" && find . -iname \"SKM_*.uasset\" 2>/dev/null | grep -iE \"quinn|manny|mann\" | head; echo \"=== SK_Mannequin ===\" && find . -iname \"*Mannequin*.uasset\" 2>/dev/null | head; echo \"=== any skeletal in Characters ===\" && find . -ipath \"*haracter*\" -iname \"SK*.uasset\" 2>/dev/null | head)",
+      "Bash(\"/c/Program Files/Epic Games/UE_5.8/Engine/Build/BatchFiles/Build.bat\" FrameworkEditor Win64 Development -Project=\"C:/Users/turbo/Documents/Unreal Projects/Framework/Framework.uproject\" -WaitMutex -FromMsBuild)",
+      "PowerShell(& \"C:\\\\Program Files\\\\Epic Games\\\\UE_5.8\\\\Engine\\\\Build\\\\BatchFiles\\\\Build.bat\" FrameworkEditor Win64 Development -Project=\"C:\\\\Users\\\\turbo\\\\Documents\\\\Unreal Projects\\\\Framework\\\\Framework.uproject\" -WaitMutex 2>&1)",
+      "PowerShell(Get-Process UnrealEditor -ErrorAction SilentlyContinue)",
+      "PowerShell($p = Get-Process UnrealEditor -ErrorAction SilentlyContinue; if \\($p\\) { \"STILL RUNNING: $\\($p.Id\\)\" } else { \"CLOSED\" })",
+      "Bash(cd \"C:/Users/turbo/Documents/Unreal Projects/Framework/Saved/Logs\" && echo \"=== FObjectFinder / SK_Mannequin / AnimToTexture ===\" && grep -iE \"SK_Mannequin|AnimToTexture|FObjectFinder|Failed to find|CDO\" Framework.log | head -30; echo \"=== log mtime ===\"; stat -c '%y' Framework.log)",
+      "Bash(cd \"/c/Program Files/Epic Games/UE_5.8\" && echo \"=== FeaturePacks ===\" && ls Templates/ 2>/dev/null | grep -iE \"third|TP_\"; echo \"=== ThirdPerson template Content Characters ===\"; find Templates -ipath \"*ThirdPerson*\" -ipath \"*Mannequin*\" -iname \"SKM_*.uasset\" 2>/dev/null | head; echo \"=== template char root ===\"; find Templates -type d -ipath \"*ThirdPerson*Content*Characters\" 2>/dev/null | head)",
+      "PowerShell($p = Get-Process UnrealEditor -ErrorAction SilentlyContinue; if \\($p\\) { \"RUNNING: $\\($p.Id\\)\" } else { \"CLOSED\" })",
+      "PowerShell($p = Get-Process UnrealEditor -ErrorAction SilentlyContinue; if \\($p\\) { \"STILL RUNNING: $\\($p.Id\\)\" } else { \"CLOSED - building...\" })",
+      "PowerShell($p = Get-Process UnrealEditor -ErrorAction SilentlyContinue; if \\($p\\) { \"RUNNING: $\\($p.Id\\) - 닫아야 빌드 가능\" } else { \"CLOSED\" })",
+      "PowerShell($p = Get-Process UnrealEditor -ErrorAction SilentlyContinue; if \\($p\\) { \"STILL RUNNING: $\\($p.Id\\)\" } else { \"CLOSED - building\" })",
+      "PowerShell($p = Get-Process UnrealEditor -ErrorAction SilentlyContinue; if \\($p\\) { \"RUNNING: $\\($p.Id\\) - 닫아주세요\" } else { \"CLOSED\" })",
+      "Bash(grep -iE \"RightMouseButton|MouseWheel|^Q$|^W$|^E$|^R$|IA_|InputAction|Mapping\")",
+      "Bash(cd \"C:/Users/turbo/Documents/Unreal Projects/Framework/Saved/Logs\" && echo \"=== mtime ===\" && stat -c '%y' Framework.log && echo \"=== GameMode/Controller/Pawn/Input 관련 ===\" && grep -iE \"FWGameMode|FWPlayerController|FWCharacter|MappingContext|EnhancedInput|Failed to find|GameMode|SetupInputComponent\" Framework.log | tail -40)",
+      "Bash(cd \"C:/Users/turbo/Documents/Unreal Projects/Framework/Content/Input\" && echo \"=== IMC_Default mtime & size ===\" && stat -c '%y  %s bytes' IMC_Default.uasset && echo \"=== 매핑 흔적 재확인 ===\" && grep -aoE \"RightMouseButton|MouseWheelAxis|IA_Move|IA_SkillQ|EnhancedActionKeyMapping|Mappings\" IMC_Default.uasset | sort | uniq -c && echo \"=== IMC_Default 가 여러개인지 ===\" && find \"C:/Users/turbo/Documents/Unreal Projects/Framework\" -iname \"IMC_Default*\" 2>/dev/null)"
+    ]
+  }
+}
