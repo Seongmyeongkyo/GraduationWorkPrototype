@@ -1,5 +1,5 @@
 #include "Session.h"
-#include <iostream>
+#include "Logger.h"
 #include <cstring>
 
 using namespace std;
@@ -91,7 +91,7 @@ void SESSION::process_packet(unsigned char* p) {
         C2S_Login* packet = reinterpret_cast<C2S_Login*>(p);
         memset(m_username, 0, MAX_NAME_LEN);
         strncpy_s(m_username, packet->username, MAX_NAME_LEN - 1);
-        cout << "Player[" << m_id << "] logged in as " << m_username << endl;
+        Logger::Log("[LOGIN] id=" + to_string(m_id) + " ip=" + m_ip + " username=" + m_username);
         send_avatar_info();
 
         for (auto& other : clients) {
@@ -106,7 +106,7 @@ void SESSION::process_packet(unsigned char* p) {
         m_x = packet->x;
         m_y = packet->y;
         m_z = packet->z;
-        cout << "Player[" << m_id << "] moved to (" << m_x << ", " << m_y << ", " << m_z << ")\n";
+        Logger::Log("[MOVE] id=" + to_string(m_id) + " pos=(" + to_string(m_x) + ", " + to_string(m_y) + ", " + to_string(m_z) + ")");
         for (auto& cl : clients)
             if (cl.m_is_connected) cl.send_move_packet(m_id);
         break;

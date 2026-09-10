@@ -10,3 +10,6 @@ Release/
 *.log
 *.recipe
 *.ilk
+
+# Runtime player-activity logs (grows every run, not source)
+Logs/

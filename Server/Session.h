@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <string>
 #include "Protocol.h"
 #include "OverlappedEx.h"
 
@@ -14,6 +15,7 @@ public:
     DWORD m_recv_flag;
     char m_username[MAX_NAME_LEN];
     float m_x, m_y, m_z;
+    std::string m_ip; // set by GameServer right after accept; used for logging only
 
     SESSION();
     ~SESSION();

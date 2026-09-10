@@ -1,10 +1,29 @@
 #include "GameServer.h"
-#include <iostream>
+#include "Logger.h"
 #include <cstring>
+#include <string>
 
 using namespace std;
 
+namespace {
+    // Best-effort peer IP lookup for logging only; never fails the connection.
+    std::string GetPeerIp(SOCKET s) {
+        sockaddr_in addr{};
+        int addr_len = sizeof(addr);
+        if (getpeername(s, reinterpret_cast<sockaddr*>(&addr), &addr_len) != 0) {
+            return "unknown";
+        }
+        char ip_str[INET_ADDRSTRLEN] = {};
+        if (!inet_ntop(AF_INET, &addr.sin_addr, ip_str, sizeof(ip_str))) {
+            return "unknown";
+        }
+        return ip_str;
+    }
+}
+
 bool GameServer::Init(unsigned short Port) {
+    Logger::Init(Port);
+
     WSADATA WSAData;
     WSAStartup(MAKEWORD(2, 2), &WSAData);
     m_server = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
@@ -22,7 +41,7 @@ bool GameServer::Init(unsigned short Port) {
     AcceptEx(m_server, m_client_socket, &m_accept_over.m_buff, 0,
         sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, NULL, &m_accept_over.m_over);
 
-    cout << "Server is running on port " << Port << "..." << endl;
+    Logger::Log("Server is running on port " + std::to_string(Port) + "...");
     return true;
 }
 
@@ -47,7 +66,7 @@ void GameServer::Run() {
         if (ret == FALSE || (num_bytes == 0 && exp_over && exp_over->m_iotype == IO_RECV)) {
             int p_id = static_cast<int>(key);
             if (p_id >= 0 && p_id < MAX_PLAYERS && clients[p_id].m_is_connected) {
-                cout << "client[" << p_id << "] Disconnected." << endl;
+                Logger::Log("[DISCONNECT] id=" + std::to_string(p_id) + " ip=" + clients[p_id].m_ip);
                 clients[p_id].m_is_connected = false;
                 for (auto& cl : clients) {
                     if (cl.m_is_connected) cl.send_remove_player(p_id);
@@ -66,6 +85,7 @@ void GameServer::Run() {
                 if (!clients[i].m_is_connected) { player_index = i; break; }
             }
             if (player_index == -1) {
+                Logger::Log("[REJECT] server full, ip=" + GetPeerIp(m_client_socket));
                 SendLoginFail(m_client_socket, "Server is full.");
                 closesocket(m_client_socket);
             }
@@ -74,8 +94,10 @@ void GameServer::Run() {
                 clients[player_index].m_is_connected = true;
                 clients[player_index].m_client = m_client_socket;
                 clients[player_index].m_id = player_index;
+                clients[player_index].m_ip = GetPeerIp(m_client_socket);
                 clients[player_index].m_x = 0.f; clients[player_index].m_y = 0.f; clients[player_index].m_z = 0.f;
                 clients[player_index].m_prev_recv = 0;
+                Logger::Log("[CONNECT] id=" + std::to_string(player_index) + " ip=" + clients[player_index].m_ip);
                 clients[player_index].send_login_success();
                 clients[player_index].do_recv();
             }

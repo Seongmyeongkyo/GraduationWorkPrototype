@@ -81,12 +81,14 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="GameServer.cpp" />
     <ClCompile Include="Session.cpp" />
+    <ClCompile Include="Logger.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Protocol.h" />
     <ClInclude Include="OverlappedEx.h" />
     <ClInclude Include="Session.h" />
     <ClInclude Include="GameServer.h" />
+    <ClInclude Include="Logger.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
