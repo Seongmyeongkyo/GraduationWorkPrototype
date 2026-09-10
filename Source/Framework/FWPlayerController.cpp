@@ -17,6 +17,7 @@
 #include "NavigationPath.h"
 #include "UObject/ConstructorHelpers.h"
 #include "FWMiniMapWidget.h"
+#include "FWNetworkSubsystem.h"
 
 AFWPlayerController::AFWPlayerController()
 {
@@ -45,8 +46,7 @@ void AFWPlayerController::MoveToWorldLocation(const FVector& WorldLocation)
 	// 클릭한 월드 지점을 navMesh 위의 가장 가까운 지점으로 스냅
 	FNavLocation ProjectedLocation;
 	if (NavSys->ProjectPointToNavigation(WorldLocation, ProjectedLocation, FVector(1000.f, 1000.f, 1000.f))) {
-		CachedDestination = ProjectedLocation.Location;
-		bHasMoveDestination = true;
+		SetMoveDestination(ProjectedLocation.Location);
 	}
 
 	else
@@ -108,6 +108,27 @@ void AFWPlayerController::BeginPlay()
 	else {
 		UE_LOG(LogTemp, Error, TEXT("[FW-Diag] MiniMapWidgetClass 가 NULL"));
 	}
+
+	if (UFWNetworkSubsystem* Net = GetNetwork())
+	{
+		Net->OnLoginResult.AddDynamic(this, &AFWPlayerController::HandleLoginResult);
+		Net->OnAvatarInfo.AddDynamic(this, &AFWPlayerController::HandleAvatarInfo);
+		Net->OnPlayerAdded.AddDynamic(this, &AFWPlayerController::HandlePlayerAdded);
+		Net->OnPlayerRemoved.AddDynamic(this, &AFWPlayerController::HandlePlayerRemoved);
+		Net->OnPlayerMoved.AddDynamic(this, &AFWPlayerController::HandlePlayerMoved);
+		Net->OnConnectionFailed.AddDynamic(this, &AFWPlayerController::HandleConnectionFailed);
+
+		if (Net->ConnectToServer(ServerIP, ServerPort))
+		{
+			Net->SendLogin(PlayerUsername);
+		}
+	}
+}
+
+UFWNetworkSubsystem* AFWPlayerController::GetNetwork() const
+{
+	UGameInstance* GI = GetGameInstance();
+	return GI ? GI->GetSubsystem<UFWNetworkSubsystem>() : nullptr;
 }
 
 void AFWPlayerController::SetupInputComponent()
@@ -207,8 +228,18 @@ void AFWPlayerController::UpdateDestinationFromCursor()
 			return;	// NavMesh 위에 없으면 이동 취소
 		}
 	}
+	SetMoveDestination(Destination);
+}
+
+void AFWPlayerController::SetMoveDestination(const FVector& Destination)
+{
 	CachedDestination = Destination;
 	bHasMoveDestination = true;
+
+	if (UFWNetworkSubsystem* Net = GetNetwork())
+	{
+		Net->SendMove(Destination);
+	}
 }
 
 void AFWPlayerController::MoveTowardDestination()
@@ -464,5 +495,83 @@ void AFWPlayerController::ActivateSkill(int32 SkillIndex)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 4.0f, Color,
 			FString::Printf(TEXT(">> [%s] 스킬"), Name));
+	}
+}
+
+// ----------------------------------------------------------------------------
+// 네트워크 (Server 이벤트 처리)
+// ----------------------------------------------------------------------------
+void AFWPlayerController::HandleLoginResult(bool bSuccess, const FString& Message)
+{
+	UE_LOG(LogTemp, Log, TEXT("[FWNet] Login %s: %s"), bSuccess ? TEXT("success") : TEXT("failed"), *Message);
+}
+
+void AFWPlayerController::HandleConnectionFailed(const FString& Reason)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[FWNet] Connection failed: %s"), *Reason);
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Red,
+			FString::Printf(TEXT("서버에 연결할 수 없습니다 (%s). Server.exe가 실행 중인지 확인하세요."), *Reason));
+	}
+}
+
+void AFWPlayerController::HandleAvatarInfo(int32 PlayerId, FVector Location)
+{
+	// 서버가 로그인 직후 나에게만 보내는 패킷. 다른 플레이어의 add/move 이벤트와
+	// 내 것을 구분하기 위해 ID만 기억해 둔다 (다시 스폰하지 않음).
+	LocalPlayerId = PlayerId;
+}
+
+void AFWPlayerController::HandlePlayerAdded(int32 PlayerId, const FString& Username, FVector Location)
+{
+	if (PlayerId == LocalPlayerId)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AFWCharacter* Avatar = World->SpawnActor<AFWCharacter>(AFWCharacter::StaticClass(), Location, FRotator::ZeroRotator, Params);
+	if (Avatar)
+	{
+		Avatar->bIsRemoteAvatar = true;
+		Avatar->NetPlayerId = PlayerId;
+		RemoteAvatars.Add(PlayerId, Avatar);
+	}
+}
+
+void AFWPlayerController::HandlePlayerRemoved(int32 PlayerId)
+{
+	if (TWeakObjectPtr<AFWCharacter>* Found = RemoteAvatars.Find(PlayerId))
+	{
+		if (Found->IsValid())
+		{
+			(*Found)->Destroy();
+		}
+		RemoteAvatars.Remove(PlayerId);
+	}
+}
+
+void AFWPlayerController::HandlePlayerMoved(int32 PlayerId, FVector Destination)
+{
+	if (PlayerId == LocalPlayerId)
+	{
+		return; // relay echoes our own move back to us; we're already moving locally.
+	}
+
+	if (TWeakObjectPtr<AFWCharacter>* Found = RemoteAvatars.Find(PlayerId))
+	{
+		if (Found->IsValid())
+		{
+			(*Found)->SetRemoteDestination(Destination);
+		}
 	}
 }

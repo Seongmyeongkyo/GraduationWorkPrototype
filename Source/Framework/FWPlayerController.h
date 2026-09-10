@@ -10,6 +10,8 @@ class AFWCameraRig;
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
+class UFWNetworkSubsystem;
+class AFWCharacter;
 
 UCLASS()
 class FRAMEWORK_API AFWPlayerController : public APlayerController
@@ -128,9 +130,42 @@ protected:
 
 	virtual void ActivateSkill(int32 SkillIndex);
 
+	// ---- 네트워크 ----
+	UPROPERTY(EditAnywhere, Category = "Network")
+	FString ServerIP = TEXT("127.0.0.1");
+
+	UPROPERTY(EditAnywhere, Category = "Network")
+	int32 ServerPort = 3500;
+
+	UPROPERTY(EditAnywhere, Category = "Network")
+	FString PlayerUsername = TEXT("Player");
+
+	UFUNCTION()
+	void HandleLoginResult(bool bSuccess, const FString& Message);
+
+	UFUNCTION()
+	void HandleAvatarInfo(int32 PlayerId, FVector Location);
+
+	UFUNCTION()
+	void HandlePlayerAdded(int32 PlayerId, const FString& Username, FVector Location);
+
+	UFUNCTION()
+	void HandlePlayerRemoved(int32 PlayerId);
+
+	UFUNCTION()
+	void HandlePlayerMoved(int32 PlayerId, FVector Destination);
+
+	UFUNCTION()
+	void HandleConnectionFailed(const FString& Reason);
+
 private:
 	/** 커서 아래 지점으로 이동 목표를 갱신 */
 	void UpdateDestinationFromCursor();
+
+	/** 이동 목표 지점을 설정하고(커서 우클릭, 미니맵 클릭 공용) 서버로 좌표를 전송 */
+	void SetMoveDestination(const FVector& Destination);
+
+	UFWNetworkSubsystem* GetNetwork() const;
 
 	/** 현재 목표를 향해 캐릭터를 이동시킴 (PlayerTick 에서 호출) */
 	void MoveTowardDestination();
@@ -152,4 +187,10 @@ private:
 	/** 컨트롤러가 소유하는 카메라 리그 **/
 	UPROPERTY()
 	TObjectPtr<AFWCameraRig> CameraRig;
+
+	/** 서버가 부여한 내 플레이어 ID. 다른 플레이어의 add/move 이벤트와 구분하는 데 사용. */
+	int32 LocalPlayerId = INDEX_NONE;
+
+	/** 다른 플레이어를 나타내는, 이 클라이언트가 직접 스폰한 아바타들. */
+	TMap<int32, TWeakObjectPtr<AFWCharacter>> RemoteAvatars;
 };
