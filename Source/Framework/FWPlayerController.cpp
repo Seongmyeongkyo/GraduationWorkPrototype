@@ -17,6 +17,7 @@
 #include "NavigationPath.h"
 #include "UObject/ConstructorHelpers.h"
 #include "FWMiniMapWidget.h"
+#include "FWStatusBarWidget.h"
 
 AFWPlayerController::AFWPlayerController()
 {
@@ -31,6 +32,16 @@ AFWPlayerController::AFWPlayerController()
 	}
 	else {
 		UE_LOG(LogTemp, Error, TEXT("[FW] WBP_MiniMap 에셋을 못 찾음. 경로 확인: /Game/UI/WBP_MiniMap"));
+	}
+
+	/** StatusBar Widget Class 로드 **/
+	static ConstructorHelpers::FClassFinder<UFWStatusBarWidget>
+		StatusBarClassFinder(TEXT("/Game/UI/WBP_StatusBarWidget"));
+	if (StatusBarClassFinder.Succeeded()) {
+		StatusBarWidgetClass = StatusBarClassFinder.Class;
+	}
+	else {
+		UE_LOG(LogTemp, Error, TEXT("[FW] WBP_StatusBarWidget 에셋을 못 찾음: /Game/UI/WBP_StatusBarWidget"));
 	}
 
 }
@@ -107,6 +118,16 @@ void AFWPlayerController::BeginPlay()
 
 	else {
 		UE_LOG(LogTemp, Error, TEXT("[FW-Diag] MiniMapWidgetClass 가 NULL"));
+	}
+
+	/** StatusBar Widget 생성(로컬 컨트롤러만 - 서버가 클라이언트 UI 만들지 않도록) **/
+	if (StatusBarWidgetClass && IsLocalController())	// 로컬 컨트롤러만 UI 생성
+	{
+		StatusBarWidgetInstance = CreateWidget<UFWStatusBarWidget>(this, StatusBarWidgetClass);
+		if (StatusBarWidgetInstance) {
+			StatusBarWidgetInstance->AddToViewport(50);  // ZOrder: 미니맵(100)보다 아래
+			UE_LOG(LogTemp, Log, TEXT("[FW] StatusBar 위젯 생성 완료"));
+		}
 	}
 }
 

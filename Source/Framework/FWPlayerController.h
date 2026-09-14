@@ -10,6 +10,7 @@ class AFWCameraRig;
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
+class UFWStatusBarWidget;
 
 UCLASS()
 class FRAMEWORK_API AFWPlayerController : public APlayerController
@@ -25,10 +26,17 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<class UFWMiniMapWidget> MiniMapWidgetClass;
+
+	/** StatusBar 위젯 클래스 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UFWStatusBarWidget> StatusBarWidgetClass;
 	
 private:
 	UPROPERTY()
 	TObjectPtr<class UFWMiniMapWidget> MiniMapWidgetInstance;
+
+	UPROPERTY()
+	TObjectPtr<UFWStatusBarWidget> StatusBarWidgetInstance;
 
 protected:
 	virtual void BeginPlay() override;
