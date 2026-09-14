@@ -93,11 +93,4 @@ UFWHealManaActorComponent* UFWHealManaActorComponent::GetAttributes(AActor* From
     return FromActor ? FromActor->FindComponentByClass<UFWHealManaActorComponent>() : nullptr;
 }
 
-// Called every frame
-void UFWHealManaActorComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
-}
 

@@ -103,9 +103,4 @@ protected:
 	UFUNCTION()
 	void OnRep_CurrentMana(float OldValue);
 
-public:	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-		
 };
