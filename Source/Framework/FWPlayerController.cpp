@@ -18,6 +18,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "FWMiniMapWidget.h"
 #include "FWStatusBarWidget.h"
+#include "FWHealManaActorComponent.h"
 
 AFWPlayerController::AFWPlayerController()
 {
@@ -412,10 +413,46 @@ void AFWPlayerController::OnZoom(const FInputActionValue& Value)
 	}
 }
 
+/** 스킬 발동 비용 **/
+static constexpr float SKILL_Q_MANA_COST = 30.f;
+
 // ----------------------------------------------------------------------------
 // 스킬
 // ----------------------------------------------------------------------------
-void AFWPlayerController::OnSkillQ(const FInputActionValue& /*Value*/) { ActivateSkill(0);}
+void AFWPlayerController::OnSkillQ(const FInputActionValue& /*Value*/) 
+{ 
+	// 캐릭터 유효성 체크
+	APawn* MyPawn = GetPawn();
+	if (!MyPawn) {
+		return;
+	}
+
+	// 캐릭터의 AttributeComponent 체크
+	AFWCharacter* MyChar = Cast<AFWCharacter>(MyPawn);
+	if (!MyChar || !MyChar->AttributeComp) {
+		return;
+	}
+
+	// 마나 체크 (부족하면 발동 취소)
+	if (MyChar->AttributeComp->GetCurrentMana() < SKILL_Q_MANA_COST)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,                             // Key (-1 = 새 메시지)
+				1.5f,                           // 표시 시간 (초)
+				FColor::Cyan,                   // 색상
+				TEXT("마나가 부족합니다")       // 메시지
+			);
+		}
+		return;
+	}
+
+	/** 마나 소모(서버 리팩터 시, 서버에서만 소모하도록 변경 필요) **/
+	MyChar->AttributeComp->ConsumeMana(SKILL_Q_MANA_COST);
+
+	ActivateSkill(0);
+}
 void AFWPlayerController::OnSkillW(const FInputActionValue& /*Value*/) { ActivateSkill(1); }
 void AFWPlayerController::OnSkillE(const FInputActionValue& /*Value*/) { ActivateSkill(2); }
 void AFWPlayerController::OnSkillR(const FInputActionValue& /*Value*/) { ActivateSkill(3); }
