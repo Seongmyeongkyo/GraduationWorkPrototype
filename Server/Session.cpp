@@ -5,6 +5,7 @@
 using namespace std;
 
 std::array<SESSION, MAX_PLAYERS> clients;
+std::mutex g_clients_mutex;
 
 SESSION::SESSION() {
     m_is_connected = false;
@@ -22,6 +23,13 @@ SESSION::~SESSION() {
 void SESSION::do_recv() {
     m_recv_flag = 0;
     memset(&m_recv_over.m_over, 0, sizeof(m_recv_over.m_over));
+    // A partial packet left over from the last reassembly pass already sits at
+    // m_buff[0..m_prev_recv-1] (put there by GameServer::Run's IO_RECV handler).
+    // Receive new bytes right after it, not on top of it - otherwise a packet
+    // split across two WSARecv completions gets its leftover half overwritten
+    // and the reassembled "packet" is corrupted.
+    m_recv_over.m_wsa.buf = m_recv_over.m_buff + m_prev_recv;
+    m_recv_over.m_wsa.len = BUF_SIZE - m_prev_recv;
     WSARecv(m_client, &m_recv_over.m_wsa, 1, 0, &m_recv_flag, &m_recv_over.m_over, nullptr);
 }
 

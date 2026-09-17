@@ -1,7 +1,10 @@
 #include "GameServer.h"
 #include "Logger.h"
 #include <cstring>
+#include <mutex>
 #include <string>
+#include <thread>
+#include <vector>
 
 using namespace std;
 
@@ -56,12 +59,36 @@ void GameServer::SendLoginFail(SOCKET client, const char* message) {
 }
 
 void GameServer::Run() {
-    for (int player_index = 0;;) {
+    // Not std::max(2u, ...) - it collides with the <windows.h> max() macro pulled
+    // in transitively (WS2tcpip.h etc.) and fails to compile.
+    unsigned int thread_count = std::thread::hardware_concurrency();
+    if (thread_count < 2) thread_count = 2;
+    Logger::Log("Starting " + std::to_string(thread_count) + " IOCP worker threads.");
+
+    std::vector<std::thread> workers;
+    workers.reserve(thread_count);
+    for (unsigned int i = 0; i < thread_count; ++i) {
+        workers.emplace_back(&GameServer::WorkerLoop, this);
+    }
+    for (auto& t : workers) {
+        t.join(); // WorkerLoop never returns, so this blocks forever - same as the old single-threaded loop.
+    }
+
+    closesocket(m_server);
+    WSACleanup();
+}
+
+void GameServer::WorkerLoop() {
+    for (;;) {
         DWORD num_bytes;
         ULONG_PTR key;
         LPOVERLAPPED over;
+        // Intentionally unlocked: this blocks (possibly indefinitely), so it must
+        // not hold g_clients_mutex or every other worker thread would stall too.
         BOOL ret = GetQueuedCompletionStatus(m_iocp, &num_bytes, &key, &over, INFINITE);
         EXP_OVER* exp_over = reinterpret_cast<EXP_OVER*>(over);
+
+        std::lock_guard<std::mutex> lock(g_clients_mutex);
 
         if (ret == FALSE || (num_bytes == 0 && exp_over && exp_over->m_iotype == IO_RECV)) {
             int p_id = static_cast<int>(key);
@@ -79,11 +106,15 @@ void GameServer::Run() {
         }
 
         switch (exp_over->m_iotype) {
-        case IO_ACCEPT:
-            player_index = -1;
+        case IO_ACCEPT: {
+            int player_index = -1;
             for (int i = 0; i < MAX_PLAYERS; ++i) {
                 if (!clients[i].m_is_connected) { player_index = i; break; }
             }
+            // AcceptEx-produced sockets don't support getpeername()/getsockname() until
+            // this is set - without it GetPeerIp() below always fails.
+            setsockopt(m_client_socket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
+                reinterpret_cast<char*>(&m_server), sizeof(m_server));
             if (player_index == -1) {
                 Logger::Log("[REJECT] server full, ip=" + GetPeerIp(m_client_socket));
                 SendLoginFail(m_client_socket, "Server is full.");
@@ -106,6 +137,7 @@ void GameServer::Run() {
             AcceptEx(m_server, m_client_socket, &m_accept_over.m_buff, 0,
                 sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, NULL, &m_accept_over.m_over);
             break;
+        }
         case IO_RECV: {
             int p_id = static_cast<int>(key);
             SESSION& cl = clients[p_id];
@@ -128,6 +160,4 @@ void GameServer::Run() {
             break;
         }
     }
-    closesocket(m_server);
-    WSACleanup();
 }

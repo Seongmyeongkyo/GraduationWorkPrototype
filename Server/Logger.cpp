@@ -5,10 +5,12 @@
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+#include <mutex>
 #include <sstream>
 
 namespace {
     std::ofstream g_log_file;
+    std::mutex g_log_mutex;
 
     std::string Timestamp() {
         const auto now = std::chrono::system_clock::now();
@@ -31,6 +33,7 @@ namespace Logger {
 
     void Log(const std::string& message) {
         const std::string line = "[" + Timestamp() + "] " + message;
+        std::lock_guard<std::mutex> lock(g_log_mutex); // multiple IOCP worker threads call this concurrently
         std::cout << line << std::endl;
         if (g_log_file.is_open()) {
             g_log_file << line << std::endl;

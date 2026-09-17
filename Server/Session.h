@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include "Protocol.h"
 #include "OverlappedEx.h"
@@ -31,3 +32,10 @@ public:
 };
 
 extern std::array<SESSION, MAX_PLAYERS> clients;
+
+// Guards all reads/writes of `clients` (including calling SESSION methods that
+// touch other sessions, e.g. the login/move broadcast loops). GameServer::Run's
+// worker threads take this once per completion before touching any session;
+// SESSION methods themselves assume it is already held and must not lock it
+// again (std::mutex is non-recursive - a nested lock on the same thread deadlocks).
+extern std::mutex g_clients_mutex;
