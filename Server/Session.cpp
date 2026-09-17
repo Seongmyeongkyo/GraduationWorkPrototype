@@ -92,6 +92,53 @@ void SESSION::send_move_packet(int mover) {
     do_send(packet.size, reinterpret_cast<char*>(&packet));
 }
 
+void SESSION::send_attack(int player_id, float dirX, float dirY) {
+    S2C_PlayerAttack packet;
+    packet.size = sizeof(S2C_PlayerAttack);
+    packet.type = S2C_PLAYER_ATTACK;
+    packet.playerId = player_id;
+    packet.dirX = dirX;
+    packet.dirY = dirY;
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
+void SESSION::send_skill(int player_id, uint8_t skillIndex, float dirX, float dirY) {
+    S2C_PlayerSkill packet;
+    packet.size = sizeof(S2C_PlayerSkill);
+    packet.type = S2C_PLAYER_SKILL;
+    packet.playerId = player_id;
+    packet.skillIndex = skillIndex;
+    packet.dirX = dirX;
+    packet.dirY = dirY;
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
+void SESSION::send_hit(int attacker_id, int target_id, int32_t damage) {
+    S2C_PlayerHit packet;
+    packet.size = sizeof(S2C_PlayerHit);
+    packet.type = S2C_PLAYER_HIT;
+    packet.attackerId = attacker_id;
+    packet.targetId = target_id;
+    packet.damage = damage;
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
+void SESSION::send_exp_result(int32_t amount) {
+    S2C_ExpResult packet;
+    packet.size = sizeof(S2C_ExpResult);
+    packet.type = S2C_EXP_RESULT;
+    packet.amount = amount;
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
+void SESSION::send_item_result(int32_t item_id) {
+    S2C_ItemResult packet;
+    packet.size = sizeof(S2C_ItemResult);
+    packet.type = S2C_ITEM_RESULT;
+    packet.itemId = item_id;
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
 void SESSION::process_packet(unsigned char* p) {
     PACKET_TYPE type = static_cast<PACKET_TYPE>(p[1]);
     switch (type) {
@@ -117,6 +164,39 @@ void SESSION::process_packet(unsigned char* p) {
         Logger::Log("[MOVE] id=" + to_string(m_id) + " pos=(" + to_string(m_x) + ", " + to_string(m_y) + ", " + to_string(m_z) + ")");
         for (auto& cl : clients)
             if (cl.m_is_connected) cl.send_move_packet(m_id);
+        break;
+    }
+    case C2S_ATTACK: {
+        C2S_Attack* packet = reinterpret_cast<C2S_Attack*>(p);
+        Logger::Log("[ATTACK] id=" + to_string(m_id) + " dir=(" + to_string(packet->dirX) + ", " + to_string(packet->dirY) + ")");
+        for (auto& cl : clients)
+            if (cl.m_is_connected) cl.send_attack(m_id, packet->dirX, packet->dirY);
+        break;
+    }
+    case C2S_SKILL: {
+        C2S_Skill* packet = reinterpret_cast<C2S_Skill*>(p);
+        Logger::Log("[SKILL] id=" + to_string(m_id) + " skill=" + to_string(static_cast<int>(packet->skillIndex)) + " dir=(" + to_string(packet->dirX) + ", " + to_string(packet->dirY) + ")");
+        for (auto& cl : clients)
+            if (cl.m_is_connected) cl.send_skill(m_id, packet->skillIndex, packet->dirX, packet->dirY);
+        break;
+    }
+    case C2S_HIT: {
+        C2S_Hit* packet = reinterpret_cast<C2S_Hit*>(p);
+        Logger::Log("[HIT] attacker=" + to_string(m_id) + " target=" + to_string(packet->targetPlayerId) + " damage=" + to_string(packet->damage));
+        for (auto& cl : clients)
+            if (cl.m_is_connected) cl.send_hit(m_id, packet->targetPlayerId, packet->damage);
+        break;
+    }
+    case C2S_GET_EXP: {
+        C2S_GetExp* packet = reinterpret_cast<C2S_GetExp*>(p);
+        Logger::Log("[EXP] id=" + to_string(m_id) + " amount=" + to_string(packet->amount));
+        send_exp_result(packet->amount); // personal - echoed back to the sender only
+        break;
+    }
+    case C2S_GET_ITEM: {
+        C2S_GetItem* packet = reinterpret_cast<C2S_GetItem*>(p);
+        Logger::Log("[ITEM] id=" + to_string(m_id) + " itemId=" + to_string(packet->itemId));
+        send_item_result(packet->itemId); // personal - echoed back to the sender only
         break;
     }
     default: break;

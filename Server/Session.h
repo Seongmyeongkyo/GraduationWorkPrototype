@@ -28,6 +28,14 @@ public:
     void send_add_player(int player_id);
     void send_login_success();
     void send_remove_player(int player_id);
+
+    // Combat/progression relays (rough placeholders - see Protocol.h)
+    void send_attack(int player_id, float dirX, float dirY);
+    void send_skill(int player_id, uint8_t skillIndex, float dirX, float dirY);
+    void send_hit(int attacker_id, int target_id, int32_t damage);
+    void send_exp_result(int32_t amount);
+    void send_item_result(int32_t item_id);
+
     void process_packet(unsigned char* p);
 };
 
