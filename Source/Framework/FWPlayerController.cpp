@@ -23,6 +23,8 @@ AFWPlayerController::AFWPlayerController()
 	// 마우스 커서 온오프
 	bShowMouseCursor = true;
 	DefaultMouseCursor = EMouseCursor::Default;
+	// Keep the independent top-down rig as the view target after pawn possession/travel.
+	bAutoManageActiveCameraTarget = false;
 
 	/** MiniMap Widget Class 설정 **/
 	static ConstructorHelpers::FClassFinder<UFWMiniMapWidget> MiniMapClassFinder(TEXT("/Game/UI/WBP_MiniMap"));
@@ -107,6 +109,16 @@ void AFWPlayerController::BeginPlay()
 
 	else {
 		UE_LOG(LogTemp, Error, TEXT("[FW-Diag] MiniMapWidgetClass 가 NULL"));
+	}
+}
+
+void AFWPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	if (CameraRig && InPawn)
+	{
+		CameraRig->SnapTo(InPawn->GetActorLocation());
+		SetViewTarget(CameraRig);
 	}
 }
 
