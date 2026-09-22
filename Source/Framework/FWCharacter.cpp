@@ -9,11 +9,19 @@
 #include "Engine/SkeletalMesh.h"
 #include "Animation/AnimInstance.h"
 #include "UObject/ConstructorHelpers.h"
+#include "FWHealManaActorComponent.h"
 
 AFWCharacter::AFWCharacter()
 {
 	// 카메라 리그에서 관리
 	PrimaryActorTick.bCanEverTick = false;
+
+	/** 캐릭터 액터 자체 복제 켜기 (다른 클라이언트에 보이기 위해) **/
+	bReplicates = true;
+	SetReplicateMovement(true);
+
+	/** 스탯 컴포넌트 부착 (컴포넌트 자체 복제는 Component 생성자에 포함)**/
+	AttributeComp = CreateDefaultSubobject<UFWHealManaActorComponent>(TEXT("AttributeComp"));
 
 	// 시점 고정
 	bUseControllerRotationPitch = false;
