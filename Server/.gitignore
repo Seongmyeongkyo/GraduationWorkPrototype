@@ -1,0 +1,15 @@
+# Build output for the Server VC++ project (root .gitignore covers *.obj/*.lib/*.exe/.vs/
+# already, this catches the rest of what MSVC drops in x64/Debug|Release).
+x64/
+Debug/
+Release/
+*.pdb
+*.ipdb
+*.iobj
+*.tlog
+*.log
+*.recipe
+*.ilk
+
+# Runtime player-activity logs (grows every run, not source)
+Logs/
