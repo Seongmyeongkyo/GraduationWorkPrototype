@@ -130,6 +130,8 @@ void AFWPlayerController::BeginPlay()
 		if (StatusBarWidgetInstance) {
 			StatusBarWidgetInstance->AddToViewport(50);  // ZOrder: 미니맵(100)보다 아래
 			UE_LOG(LogTemp, Log, TEXT("[FW] StatusBar 위젯 생성 완료"));
+		}
+	}
 
 	if (UFWNetworkSubsystem* Net = GetNetwork())
 	{
@@ -155,6 +157,7 @@ void AFWPlayerController::OnPossess(APawn* InPawn)
 		CameraRig->SnapTo(InPawn->GetActorLocation());
 		SetViewTarget(CameraRig);
 	}
+}
 
 UFWNetworkSubsystem* AFWPlayerController::GetNetwork() const
 {
