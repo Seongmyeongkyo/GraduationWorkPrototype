@@ -11,5 +11,13 @@ Release/
 *.recipe
 *.ilk
 
+# Per-user Visual Studio debugging settings for Server.slnx/Server.vcxproj -
+# local only (working directory, command args, etc.), not meant to be shared.
+# NOTE: Server.slnx / Server.vcxproj / Server.vcxproj.filters themselves are
+# deliberately NOT ignored - they need to stay tracked so the solution can't
+# vanish again the way it did before (that was *.sln in the root .gitignore
+# catching a solution file this project actually needed).
+*.vcxproj.user
+
 # Runtime player-activity logs (grows every run, not source)
 Logs/
