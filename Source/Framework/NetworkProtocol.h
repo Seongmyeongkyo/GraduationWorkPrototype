@@ -8,11 +8,14 @@ namespace FWNet
 	constexpr uint16_t PORT = 3500;
 	constexpr int32_t MAX_NAME_LEN = 20;
 	constexpr int32_t RECV_CAPACITY = 4096;
+	constexpr int32_t SKILL_COUNT = 3;
 
 	enum PACKET_TYPE : uint8_t
 	{
 		C2S_LOGIN = 0, C2S_MOVE,
-		S2C_LOGIN_RESULT, S2C_AVATAR_INFO, S2C_ADD_PLAYER, S2C_REMOVE_PLAYER, S2C_MOVE_PLAYER
+		S2C_LOGIN_RESULT, S2C_AVATAR_INFO, S2C_ADD_PLAYER, S2C_REMOVE_PLAYER, S2C_MOVE_PLAYER,
+		C2S_ATTACK, C2S_SKILL, C2S_HIT, C2S_GET_EXP, C2S_GET_ITEM,
+		S2C_PLAYER_ATTACK, S2C_PLAYER_SKILL, S2C_PLAYER_HIT, S2C_EXP_RESULT, S2C_ITEM_RESULT
 	};
 
 #pragma pack(push, 1)
@@ -69,6 +72,92 @@ namespace FWNet
 		PACKET_TYPE type;
 		int32_t playerId;
 		float x, y, z;
+	};
+
+	// ---- Combat / progression (rough placeholders, mirrors Server/Protocol.h - subject to change) ----
+
+	// No target/hitbox info - server just relays so other clients can play the animation/VFX.
+	struct C2S_Attack
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		float dirX, dirY;
+	};
+
+	struct C2S_Skill
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		uint8_t skillIndex; // 0..SKILL_COUNT-1
+		float dirX, dirY;
+	};
+
+	// Client-authoritative hit report (same trust model as C2S_Move): this client
+	// decides it landed a hit and how much damage - the server does not validate it.
+	struct C2S_Hit
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		int32_t targetPlayerId;
+		int32_t damage;
+	};
+
+	struct C2S_GetExp
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		int32_t amount;
+	};
+
+	struct C2S_GetItem
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		int32_t itemId;
+	};
+
+	struct S2C_PlayerAttack
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		int32_t playerId;
+		float dirX, dirY;
+	};
+
+	struct S2C_PlayerSkill
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		int32_t playerId;
+		uint8_t skillIndex;
+		float dirX, dirY;
+	};
+
+	// Broadcast to everyone, not just the target - lets the victim (targetId ==
+	// self) apply damage and bystanders play hit VFX from the same packet.
+	struct S2C_PlayerHit
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		int32_t attackerId;
+		int32_t targetId;
+		int32_t damage;
+	};
+
+	// Echoed only to the player who gained it, not broadcast.
+	struct S2C_ExpResult
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		int32_t amount;
+	};
+
+	// Echoed only to the player who picked it up, not broadcast.
+	struct S2C_ItemResult
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		int32_t itemId;
 	};
 #pragma pack(pop)
 }
