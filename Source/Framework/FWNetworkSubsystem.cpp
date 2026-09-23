@@ -123,6 +123,73 @@ void UFWNetworkSubsystem::SendMove(const FVector& Destination)
 	SendBytes(&Packet, Packet.size);
 }
 
+void UFWNetworkSubsystem::SendAttack(float DirX, float DirY)
+{
+	C2S_Attack Packet{};
+	Packet.size = sizeof(C2S_Attack);
+	Packet.type = C2S_ATTACK;
+	Packet.dirX = DirX;
+	Packet.dirY = DirY;
+	SendBytes(&Packet, Packet.size);
+}
+
+void UFWNetworkSubsystem::SendSkill(int32 SkillIndex, float DirX, float DirY)
+{
+	C2S_Skill Packet{};
+	Packet.size = sizeof(C2S_Skill);
+	Packet.type = C2S_SKILL;
+	Packet.skillIndex = static_cast<uint8>(SkillIndex);
+	Packet.dirX = DirX;
+	Packet.dirY = DirY;
+	SendBytes(&Packet, Packet.size);
+}
+
+void UFWNetworkSubsystem::SendHit(int32 TargetPlayerId, int32 Damage)
+{
+	C2S_Hit Packet{};
+	Packet.size = sizeof(C2S_Hit);
+	Packet.type = C2S_HIT;
+	Packet.targetPlayerId = TargetPlayerId;
+	Packet.damage = Damage;
+	SendBytes(&Packet, Packet.size);
+}
+
+void UFWNetworkSubsystem::SendGetExp(int32 Amount)
+{
+	C2S_GetExp Packet{};
+	Packet.size = sizeof(C2S_GetExp);
+	Packet.type = C2S_GET_EXP;
+	Packet.amount = Amount;
+	SendBytes(&Packet, Packet.size);
+}
+
+void UFWNetworkSubsystem::SendGetItem(int32 ItemId)
+{
+	C2S_GetItem Packet{};
+	Packet.size = sizeof(C2S_GetItem);
+	Packet.type = C2S_GET_ITEM;
+	Packet.itemId = ItemId;
+	SendBytes(&Packet, Packet.size);
+}
+
+void UFWNetworkSubsystem::SendUpdateHealth(float CurrentHealth)
+{
+	C2S_UpdateHealth Packet{};
+	Packet.size = sizeof(C2S_UpdateHealth);
+	Packet.type = C2S_UPDATE_HEALTH;
+	Packet.currentHealth = CurrentHealth;
+	SendBytes(&Packet, Packet.size);
+}
+
+void UFWNetworkSubsystem::SendUpdateMana(float CurrentMana)
+{
+	C2S_UpdateMana Packet{};
+	Packet.size = sizeof(C2S_UpdateMana);
+	Packet.type = C2S_UPDATE_MANA;
+	Packet.currentMana = CurrentMana;
+	SendBytes(&Packet, Packet.size);
+}
+
 void UFWNetworkSubsystem::Tick(float DeltaTime)
 {
 	if (!Socket)
@@ -223,6 +290,48 @@ void UFWNetworkSubsystem::ProcessPacket(const uint8* Packet)
 	{
 		const auto* P = reinterpret_cast<const S2C_MovePlayer*>(Packet);
 		OnPlayerMoved.Broadcast(P->playerId, FVector(P->x, P->y, P->z));
+		break;
+	}
+	case S2C_PLAYER_ATTACK:
+	{
+		const auto* P = reinterpret_cast<const S2C_PlayerAttack*>(Packet);
+		OnPlayerAttack.Broadcast(P->playerId, P->dirX, P->dirY);
+		break;
+	}
+	case S2C_PLAYER_SKILL:
+	{
+		const auto* P = reinterpret_cast<const S2C_PlayerSkill*>(Packet);
+		OnPlayerSkill.Broadcast(P->playerId, P->skillIndex, P->dirX, P->dirY);
+		break;
+	}
+	case S2C_PLAYER_HIT:
+	{
+		const auto* P = reinterpret_cast<const S2C_PlayerHit*>(Packet);
+		OnPlayerHit.Broadcast(P->attackerId, P->targetId, P->damage);
+		break;
+	}
+	case S2C_EXP_RESULT:
+	{
+		const auto* P = reinterpret_cast<const S2C_ExpResult*>(Packet);
+		OnExpResult.Broadcast(P->amount);
+		break;
+	}
+	case S2C_ITEM_RESULT:
+	{
+		const auto* P = reinterpret_cast<const S2C_ItemResult*>(Packet);
+		OnItemResult.Broadcast(P->itemId);
+		break;
+	}
+	case S2C_HEALTH_RESULT:
+	{
+		const auto* P = reinterpret_cast<const S2C_HealthResult*>(Packet);
+		OnHealthResult.Broadcast(P->currentHealth);
+		break;
+	}
+	case S2C_MANA_RESULT:
+	{
+		const auto* P = reinterpret_cast<const S2C_ManaResult*>(Packet);
+		OnManaResult.Broadcast(P->currentMana);
 		break;
 	}
 	default:

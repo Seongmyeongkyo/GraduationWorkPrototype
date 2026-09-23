@@ -13,6 +13,7 @@ SESSION::SESSION() {
     m_client = INVALID_SOCKET;
     m_recv_over.m_iotype = IO_RECV;
     m_x = 0.f; m_y = 0.f; m_z = 0.f;
+    m_hp = 100.f; m_mp = 100.f; m_exp = 0;
     m_prev_recv = 0;
 }
 
@@ -139,6 +140,22 @@ void SESSION::send_item_result(int32_t item_id) {
     do_send(packet.size, reinterpret_cast<char*>(&packet));
 }
 
+void SESSION::send_health_result(float hp) {
+    S2C_HealthResult packet;
+    packet.size = sizeof(S2C_HealthResult);
+    packet.type = S2C_HEALTH_RESULT;
+    packet.currentHealth = hp;
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
+void SESSION::send_mana_result(float mp) {
+    S2C_ManaResult packet;
+    packet.size = sizeof(S2C_ManaResult);
+    packet.type = S2C_MANA_RESULT;
+    packet.currentMana = mp;
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
 void SESSION::process_packet(unsigned char* p) {
     PACKET_TYPE type = static_cast<PACKET_TYPE>(p[1]);
     switch (type) {
@@ -189,7 +206,8 @@ void SESSION::process_packet(unsigned char* p) {
     }
     case C2S_GET_EXP: {
         C2S_GetExp* packet = reinterpret_cast<C2S_GetExp*>(p);
-        Logger::Log("[EXP] id=" + to_string(m_id) + " amount=" + to_string(packet->amount));
+        m_exp += packet->amount; // now tracked on the session; echo below still sends the delta, not the running total
+        Logger::Log("[EXP] id=" + to_string(m_id) + " amount=" + to_string(packet->amount) + " total=" + to_string(m_exp));
         send_exp_result(packet->amount); // personal - echoed back to the sender only
         break;
     }
@@ -197,6 +215,20 @@ void SESSION::process_packet(unsigned char* p) {
         C2S_GetItem* packet = reinterpret_cast<C2S_GetItem*>(p);
         Logger::Log("[ITEM] id=" + to_string(m_id) + " itemId=" + to_string(packet->itemId));
         send_item_result(packet->itemId); // personal - echoed back to the sender only
+        break;
+    }
+    case C2S_UPDATE_HEALTH: {
+        C2S_UpdateHealth* packet = reinterpret_cast<C2S_UpdateHealth*>(p);
+        m_hp = packet->currentHealth;
+        Logger::Log("[HEALTH] id=" + to_string(m_id) + " hp=" + to_string(m_hp));
+        send_health_result(m_hp); // personal - echoed back to the sender only
+        break;
+    }
+    case C2S_UPDATE_MANA: {
+        C2S_UpdateMana* packet = reinterpret_cast<C2S_UpdateMana*>(p);
+        m_mp = packet->currentMana;
+        Logger::Log("[MANA] id=" + to_string(m_id) + " mp=" + to_string(m_mp));
+        send_mana_result(m_mp); // personal - echoed back to the sender only
         break;
     }
     default: break;

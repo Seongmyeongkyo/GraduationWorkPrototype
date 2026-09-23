@@ -140,6 +140,7 @@ void AFWPlayerController::BeginPlay()
 		Net->OnPlayerAdded.AddDynamic(this, &AFWPlayerController::HandlePlayerAdded);
 		Net->OnPlayerRemoved.AddDynamic(this, &AFWPlayerController::HandlePlayerRemoved);
 		Net->OnPlayerMoved.AddDynamic(this, &AFWPlayerController::HandlePlayerMoved);
+		Net->OnPlayerHit.AddDynamic(this, &AFWPlayerController::HandlePlayerHit);
 		Net->OnConnectionFailed.AddDynamic(this, &AFWPlayerController::HandleConnectionFailed);
 
 		if (Net->ConnectToServer(ServerIP, ServerPort))
@@ -642,6 +643,23 @@ void AFWPlayerController::HandlePlayerMoved(int32 PlayerId, FVector Destination)
 		if (Found->IsValid())
 		{
 			(*Found)->SetRemoteDestination(Destination);
+		}
+	}
+}
+
+void AFWPlayerController::HandlePlayerHit(int32 /*AttackerId*/, int32 TargetId, int32 Damage)
+{
+	// No enemy health bars yet - only react when we're the one who got hit.
+	if (TargetId != LocalPlayerId)
+	{
+		return;
+	}
+
+	if (AFWCharacter* MyChar = Cast<AFWCharacter>(GetPawn()))
+	{
+		if (MyChar->AttributeComp)
+		{
+			MyChar->AttributeComp->ApplyDamage(static_cast<float>(Damage));
 		}
 	}
 }

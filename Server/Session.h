@@ -16,6 +16,8 @@ public:
     DWORD m_recv_flag;
     char m_username[MAX_NAME_LEN];
     float m_x, m_y, m_z;
+    float m_hp, m_mp;   // last value reported by C2S_UpdateHealth/Mana; not validated, see Protocol.h
+    int32_t m_exp;      // running total accumulated from C2S_GetExp amounts
     std::string m_ip; // set by GameServer right after accept; used for logging only
 
     SESSION();
@@ -35,6 +37,8 @@ public:
     void send_hit(int attacker_id, int target_id, int32_t damage);
     void send_exp_result(int32_t amount);
     void send_item_result(int32_t item_id);
+    void send_health_result(float hp);
+    void send_mana_result(float mp);
 
     void process_packet(unsigned char* p);
 };

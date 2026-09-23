@@ -15,6 +15,13 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FFWOnAvatarInfo, int32, PlayerId, F
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FFWOnPlayerAdded, int32, PlayerId, const FString&, Username, FVector, Location);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnPlayerRemoved, int32, PlayerId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FFWOnPlayerMoved, int32, PlayerId, FVector, Destination);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FFWOnPlayerAttack, int32, PlayerId, float, DirX, float, DirY);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FFWOnPlayerSkill, int32, PlayerId, int32, SkillIndex, float, DirX, float, DirY);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FFWOnPlayerHit, int32, AttackerId, int32, TargetId, int32, Damage);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnExpResult, int32, Amount);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnItemResult, int32, ItemId);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnHealthResult, float, CurrentHealth);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnManaResult, float, CurrentMana);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnConnectionFailed, const FString&, Reason);
 
 /**
@@ -53,6 +60,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network")
 	void SendMove(const FVector& Destination);
 
+	// Combat/progression relays - rough placeholders, see NetworkProtocol.h.
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void SendAttack(float DirX, float DirY);
+
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void SendSkill(int32 SkillIndex, float DirX, float DirY);
+
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void SendHit(int32 TargetPlayerId, int32 Damage);
+
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void SendGetExp(int32 Amount);
+
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void SendGetItem(int32 ItemId);
+
+	// Stat sync - rough placeholders, see NetworkProtocol.h.
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void SendUpdateHealth(float CurrentHealth);
+
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void SendUpdateMana(float CurrentMana);
+
 	UPROPERTY(BlueprintAssignable, Category = "Network")
 	FFWOnLoginResult OnLoginResult;
 
@@ -67,6 +97,29 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Network")
 	FFWOnPlayerMoved OnPlayerMoved;
+
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnPlayerAttack OnPlayerAttack;
+
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnPlayerSkill OnPlayerSkill;
+
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnPlayerHit OnPlayerHit;
+
+	/** Personal - only fires for the player who gained the exp/item, never broadcast. */
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnExpResult OnExpResult;
+
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnItemResult OnItemResult;
+
+	/** Personal - only fires for the player who reported it, never broadcast. */
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnHealthResult OnHealthResult;
+
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnManaResult OnManaResult;
 
 	/** Broadcast whenever a connection attempt fails, immediately or after the async handshake times out/errors. */
 	UPROPERTY(BlueprintAssignable, Category = "Network")

@@ -165,6 +165,9 @@ protected:
 	void HandlePlayerMoved(int32 PlayerId, FVector Destination);
 
 	UFUNCTION()
+	void HandlePlayerHit(int32 AttackerId, int32 TargetId, int32 Damage);
+
+	UFUNCTION()
 	void HandleConnectionFailed(const FString& Reason);
 
 private:

@@ -6,6 +6,8 @@
 #include "Components/ActorComponent.h"
 #include "FWHealManaActorComponent.generated.h"
 
+class UFWNetworkSubsystem;
+
 /** UI 및 게임 로직이 구독하여 값 변화 획득 **/
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnAttributeChanged,
 	UFWHealManaActorComponent*, AttrComp,
@@ -30,14 +32,22 @@ public:
 	FOnAttributeChanged OnManaChanged;
 
 	
-	/** 서버 전용 상태 변경 API **/
-	/** 마나 소모. true = 소모 성공. false = 부족하거나 죽어있음. 서버에서만 유효. **/
+	/** 상태 변경 API. 이 클라이언트가 로컬로 즉시 적용하고, 새 값을 서버(커스텀 릴레이 서버)에 보고한다. **/
+	/** 마나 소모. true = 소모 성공. false = 부족하거나 죽어있음. **/
 	UFUNCTION(BlueprintCallable, Category = "FW|Attribute")
 	bool ConsumeMana(float Amount);
 
-	/** 마나 회복 (수동). 서버에서만 유효. **/
+	/** 마나 회복 (수동/자동 재생 공용). **/
 	UFUNCTION(BlueprintCallable, Category = "FW|Attribute")
 	void RegenerateMana(float Amount);
+
+	/** 피격 등으로 체력 감소. **/
+	UFUNCTION(BlueprintCallable, Category = "FW|Attribute")
+	void ApplyDamage(float Amount);
+
+	/** 회복 아이템/스킬 등으로 체력 증가. **/
+	UFUNCTION(BlueprintCallable, Category = "FW|Attribute")
+	void Heal(float Amount);
 
 	/** Getter **/
 	UFUNCTION(BlueprintPure, Category = "FW|Attribute")
@@ -69,19 +79,17 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	/** 스탯(서버 권한, 자동 복제) **/
+	/** 스탯. 이 클라이언트가 로컬로 소유/갱신하고 커스텀 서버(FWNetworkSubsystem)로 동기화한다. **/
 	UPROPERTY(EditAnywhere, Category = "FW|Attribute|Health")
 	float MaxHealth = 100.f;
 
-	UPROPERTY(ReplicatedUsing = OnRep_CurrentHealth, VisibleAnywhere, Category = "FW|Attribute|Health")
+	UPROPERTY(VisibleAnywhere, Category = "FW|Attribute|Health")
 	float CurrentHealth = 100.f;
 
 	UPROPERTY(EditAnywhere, Category = "FW|Attribute|Mana")
 	float MaxMana = 100.f;
 
-	UPROPERTY(ReplicatedUsing = OnRep_CurrentMana, VisibleAnywhere, Category = "FW|Attribute|Mana")
+	UPROPERTY(VisibleAnywhere, Category = "FW|Attribute|Mana")
 	float CurrentMana = 100.f;
 
 	/** 자동 마나 재생 **/
@@ -96,11 +104,14 @@ protected:
 	FTimerHandle ManaRegenTimerHandle;
 	void TickManaRegen();
 
-	/** OnRep(클라이언트에서 복제 감지 시 델리게이트 발동) **/
+	/** 같은 GameInstance의 FWNetworkSubsystem 접근용 (없으면 nullptr, 예: 아직 BeginPlay 전) **/
+	UFWNetworkSubsystem* GetNetwork() const;
+
+	/** 서버가 보고를 받아 되돌려준 값. 현재는 그대로 반영만 함(별도 검증 없음). **/
 	UFUNCTION()
-	void OnRep_CurrentHealth(float OldValue);
+	void HandleHealthResult(float ServerHealth);
 
 	UFUNCTION()
-	void OnRep_CurrentMana(float OldValue);
+	void HandleManaResult(float ServerMana);
 
 };

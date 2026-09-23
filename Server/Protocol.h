@@ -23,7 +23,11 @@ enum PACKET_TYPE : uint8_t {
     // Field layouts are all placeholders - expect to revise once the client
     // side of each feature exists and we know what it actually needs to send.
     C2S_ATTACK, C2S_SKILL, C2S_HIT, C2S_GET_EXP, C2S_GET_ITEM,
-    S2C_PLAYER_ATTACK, S2C_PLAYER_SKILL, S2C_PLAYER_HIT, S2C_EXP_RESULT, S2C_ITEM_RESULT
+    S2C_PLAYER_ATTACK, S2C_PLAYER_SKILL, S2C_PLAYER_HIT, S2C_EXP_RESULT, S2C_ITEM_RESULT,
+
+    // ---- Stat sync (health/mana), same rough/placeholder status as the block above.
+    C2S_UPDATE_HEALTH, C2S_UPDATE_MANA,
+    S2C_HEALTH_RESULT, S2C_MANA_RESULT
 };
 
 #pragma pack(push, 1) // Prevent padding (client/server byte alignment)
@@ -156,5 +160,37 @@ struct S2C_ItemResult {
     uint8_t size;
     PACKET_TYPE type;
     int32_t itemId;
+};
+
+// ---- Health / mana sync (rough placeholders, same trust model as everything above:
+// the client computes its own new value - from taking a hit, casting a skill, natural
+// regen, a future heal/potion, etc. - and just reports it here. The server does not
+// validate or clamp it; it stores the value on the SESSION (m_hp/m_mp) for later use
+// (e.g. other clients querying it, respawn logic) and echoes it back to the sender only.
+
+struct C2S_UpdateHealth {
+    uint8_t size;
+    PACKET_TYPE type;
+    float currentHealth;
+};
+
+struct C2S_UpdateMana {
+    uint8_t size;
+    PACKET_TYPE type;
+    float currentMana;
+};
+
+// Sent only back to the player who reported it, not broadcast.
+struct S2C_HealthResult {
+    uint8_t size;
+    PACKET_TYPE type;
+    float currentHealth;
+};
+
+// Sent only back to the player who reported it, not broadcast.
+struct S2C_ManaResult {
+    uint8_t size;
+    PACKET_TYPE type;
+    float currentMana;
 };
 #pragma pack(pop)
