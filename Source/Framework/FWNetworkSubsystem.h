@@ -20,8 +20,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FFWOnPlayerSkill, int32, PlayerId,
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FFWOnPlayerHit, int32, AttackerId, int32, TargetId, int32, Damage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnExpResult, int32, Amount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnItemResult, int32, ItemId);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnHealthResult, float, CurrentHealth);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnManaResult, float, CurrentMana);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnConnectionFailed, const FString&, Reason);
 
 /**
@@ -113,13 +111,6 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Network")
 	FFWOnItemResult OnItemResult;
-
-	/** Personal - only fires for the player who reported it, never broadcast. */
-	UPROPERTY(BlueprintAssignable, Category = "Network")
-	FFWOnHealthResult OnHealthResult;
-
-	UPROPERTY(BlueprintAssignable, Category = "Network")
-	FFWOnManaResult OnManaResult;
 
 	/** Broadcast whenever a connection attempt fails, immediately or after the async handshake times out/errors. */
 	UPROPERTY(BlueprintAssignable, Category = "Network")

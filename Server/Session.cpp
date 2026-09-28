@@ -8,13 +8,19 @@ std::array<SESSION, MAX_PLAYERS> clients;
 std::mutex g_clients_mutex;
 
 SESSION::SESSION() {
-    m_is_connected = false;
-    m_id = 999;
-    m_client = INVALID_SOCKET;
     m_recv_over.m_iotype = IO_RECV;
+    reset();
+}
+
+void SESSION::reset() {
+    m_is_connected = false;
+    m_client = INVALID_SOCKET;
+    m_id = 999;
+    m_prev_recv = 0;
+    memset(m_username, 0, sizeof(m_username));
     m_x = 0.f; m_y = 0.f; m_z = 0.f;
     m_hp = 100.f; m_mp = 100.f; m_exp = 0;
-    m_prev_recv = 0;
+    m_ip.clear();
 }
 
 SESSION::~SESSION() {
@@ -24,11 +30,8 @@ SESSION::~SESSION() {
 void SESSION::do_recv() {
     m_recv_flag = 0;
     memset(&m_recv_over.m_over, 0, sizeof(m_recv_over.m_over));
-    // A partial packet left over from the last reassembly pass already sits at
-    // m_buff[0..m_prev_recv-1] (put there by GameServer::Run's IO_RECV handler).
-    // Receive new bytes right after it, not on top of it - otherwise a packet
-    // split across two WSARecv completions gets its leftover half overwritten
-    // and the reassembled "packet" is corrupted.
+    // 이전 수신에서 남은 미완성 패킷이 버퍼 앞쪽 m_prev_recv 바이트에 있으므로 그 뒤에 이어서 받는다.
+    // (앞에 덮어쓰면 두 번에 나눠 도착한 패킷이 깨진다)
     m_recv_over.m_wsa.buf = m_recv_over.m_buff + m_prev_recv;
     m_recv_over.m_wsa.len = BUF_SIZE - m_prev_recv;
     WSARecv(m_client, &m_recv_over.m_wsa, 1, 0, &m_recv_flag, &m_recv_over.m_over, nullptr);
@@ -140,22 +143,6 @@ void SESSION::send_item_result(int32_t item_id) {
     do_send(packet.size, reinterpret_cast<char*>(&packet));
 }
 
-void SESSION::send_health_result(float hp) {
-    S2C_HealthResult packet;
-    packet.size = sizeof(S2C_HealthResult);
-    packet.type = S2C_HEALTH_RESULT;
-    packet.currentHealth = hp;
-    do_send(packet.size, reinterpret_cast<char*>(&packet));
-}
-
-void SESSION::send_mana_result(float mp) {
-    S2C_ManaResult packet;
-    packet.size = sizeof(S2C_ManaResult);
-    packet.type = S2C_MANA_RESULT;
-    packet.currentMana = mp;
-    do_send(packet.size, reinterpret_cast<char*>(&packet));
-}
-
 void SESSION::process_packet(unsigned char* p) {
     PACKET_TYPE type = static_cast<PACKET_TYPE>(p[1]);
     switch (type) {
@@ -178,7 +165,6 @@ void SESSION::process_packet(unsigned char* p) {
         m_x = packet->x;
         m_y = packet->y;
         m_z = packet->z;
-        Logger::Log("[MOVE] id=" + to_string(m_id) + " pos=(" + to_string(m_x) + ", " + to_string(m_y) + ", " + to_string(m_z) + ")");
         for (auto& cl : clients)
             if (cl.m_is_connected) cl.send_move_packet(m_id);
         break;
@@ -206,29 +192,27 @@ void SESSION::process_packet(unsigned char* p) {
     }
     case C2S_GET_EXP: {
         C2S_GetExp* packet = reinterpret_cast<C2S_GetExp*>(p);
-        m_exp += packet->amount; // now tracked on the session; echo below still sends the delta, not the running total
+        m_exp += packet->amount;
         Logger::Log("[EXP] id=" + to_string(m_id) + " amount=" + to_string(packet->amount) + " total=" + to_string(m_exp));
-        send_exp_result(packet->amount); // personal - echoed back to the sender only
+        send_exp_result(packet->amount); // 누적값이 아니라 이번에 받은 양을 본인에게만 전송
         break;
     }
     case C2S_GET_ITEM: {
         C2S_GetItem* packet = reinterpret_cast<C2S_GetItem*>(p);
         Logger::Log("[ITEM] id=" + to_string(m_id) + " itemId=" + to_string(packet->itemId));
-        send_item_result(packet->itemId); // personal - echoed back to the sender only
+        send_item_result(packet->itemId); // 본인에게만 전송
         break;
     }
     case C2S_UPDATE_HEALTH: {
         C2S_UpdateHealth* packet = reinterpret_cast<C2S_UpdateHealth*>(p);
         m_hp = packet->currentHealth;
         Logger::Log("[HEALTH] id=" + to_string(m_id) + " hp=" + to_string(m_hp));
-        send_health_result(m_hp); // personal - echoed back to the sender only
         break;
     }
     case C2S_UPDATE_MANA: {
         C2S_UpdateMana* packet = reinterpret_cast<C2S_UpdateMana*>(p);
         m_mp = packet->currentMana;
         Logger::Log("[MANA] id=" + to_string(m_id) + " mp=" + to_string(m_mp));
-        send_mana_result(m_mp); // personal - echoed back to the sender only
         break;
     }
     default: break;

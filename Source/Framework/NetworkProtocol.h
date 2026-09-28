@@ -16,8 +16,7 @@ namespace FWNet
 		S2C_LOGIN_RESULT, S2C_AVATAR_INFO, S2C_ADD_PLAYER, S2C_REMOVE_PLAYER, S2C_MOVE_PLAYER,
 		C2S_ATTACK, C2S_SKILL, C2S_HIT, C2S_GET_EXP, C2S_GET_ITEM,
 		S2C_PLAYER_ATTACK, S2C_PLAYER_SKILL, S2C_PLAYER_HIT, S2C_EXP_RESULT, S2C_ITEM_RESULT,
-		C2S_UPDATE_HEALTH, C2S_UPDATE_MANA,
-		S2C_HEALTH_RESULT, S2C_MANA_RESULT
+		C2S_UPDATE_HEALTH, C2S_UPDATE_MANA
 	};
 
 #pragma pack(push, 1)
@@ -163,6 +162,7 @@ namespace FWNet
 	};
 
 	// ---- Health / mana sync (rough placeholders, mirrors Server/Protocol.h) ----
+	// Report-only: the server stores the value and sends nothing back.
 
 	struct C2S_UpdateHealth
 	{
@@ -172,22 +172,6 @@ namespace FWNet
 	};
 
 	struct C2S_UpdateMana
-	{
-		uint8_t size;
-		PACKET_TYPE type;
-		float currentMana;
-	};
-
-	// Echoed only to the player who reported it, not broadcast.
-	struct S2C_HealthResult
-	{
-		uint8_t size;
-		PACKET_TYPE type;
-		float currentHealth;
-	};
-
-	// Echoed only to the player who reported it, not broadcast.
-	struct S2C_ManaResult
 	{
 		uint8_t size;
 		PACKET_TYPE type;

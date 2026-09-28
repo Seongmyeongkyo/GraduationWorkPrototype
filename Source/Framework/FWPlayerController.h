@@ -149,6 +149,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Network")
 	FString PlayerUsername = TEXT("Player");
 
+	/** 이동 패킷 최소 전송 간격(초). 우클릭을 누른 채 끌면 매 프레임 목적지가 바뀌므로, 이 간격으로 묶어서 가장 최근 목적지만 보낸다. */
+	UPROPERTY(EditAnywhere, Category = "Network")
+	float MoveSendInterval = 0.1f;
+
+	/** 마지막으로 보낸 목적지와 이 거리(cm)보다 가까우면 다시 보내지 않는다. */
+	UPROPERTY(EditAnywhere, Category = "Network")
+	float MinMoveSendDistance = 10.f;
+
 	UFUNCTION()
 	void HandleLoginResult(bool bSuccess, const FString& Message);
 
@@ -174,8 +182,20 @@ private:
 	/** 커서 아래 지점으로 이동 목표를 갱신 */
 	void UpdateDestinationFromCursor();
 
-	/** 이동 목표 지점을 설정하고(커서 우클릭, 미니맵 클릭 공용) 서버로 좌표를 전송 */
+	/** 이동 목표 지점을 설정하고(커서 우클릭, 미니맵 클릭 공용) 서버 전송을 예약 */
 	void SetMoveDestination(const FVector& Destination);
+
+	/**
+	 * 예약된 목적지를 전송 제한(MoveSendInterval / MinMoveSendDistance)에 맞춰 서버로 보냄.
+	 * 간격이 아직 안 지났으면 예약을 유지하고 다음 PlayerTick에서 다시 시도하므로,
+	 * 우클릭을 뗀 순간의 마지막 목적지도 빠짐없이 전송된다.
+	 */
+	void FlushPendingMoveSend();
+
+	FVector LastSentDestination = FVector::ZeroVector;
+	double LastMoveSendTime = 0.0;
+	bool bHasSentMove = false;
+	bool bMoveSendPending = false;
 
 	UFWNetworkSubsystem* GetNetwork() const;
 

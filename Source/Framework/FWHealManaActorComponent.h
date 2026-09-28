@@ -32,7 +32,7 @@ public:
 	FOnAttributeChanged OnManaChanged;
 
 	
-	/** 상태 변경 API. 이 클라이언트가 로컬로 즉시 적용하고, 새 값을 서버(커스텀 릴레이 서버)에 보고한다. **/
+	/** 상태 변경 API. 로컬로 즉시 적용하고, 로컬 플레이어가 조종 중인 캐릭터라면 새 값을 서버에 보고한다(응답 없음). **/
 	/** 마나 소모. true = 소모 성공. false = 부족하거나 죽어있음. **/
 	UFUNCTION(BlueprintCallable, Category = "FW|Attribute")
 	bool ConsumeMana(float Amount);
@@ -79,7 +79,7 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	/** 스탯. 이 클라이언트가 로컬로 소유/갱신하고 커스텀 서버(FWNetworkSubsystem)로 동기화한다. **/
+	/** 스탯. 이 클라이언트가 로컬로 소유/갱신한다. 서버로는 보고만 하고 받지는 않는다. **/
 	UPROPERTY(EditAnywhere, Category = "FW|Attribute|Health")
 	float MaxHealth = 100.f;
 
@@ -104,14 +104,11 @@ protected:
 	FTimerHandle ManaRegenTimerHandle;
 	void TickManaRegen();
 
-	/** 같은 GameInstance의 FWNetworkSubsystem 접근용 (없으면 nullptr, 예: 아직 BeginPlay 전) **/
-	UFWNetworkSubsystem* GetNetwork() const;
-
-	/** 서버가 보고를 받아 되돌려준 값. 현재는 그대로 반영만 함(별도 검증 없음). **/
-	UFUNCTION()
-	void HandleHealthResult(float ServerHealth);
-
-	UFUNCTION()
-	void HandleManaResult(float ServerMana);
+	/**
+	 * 이 컴포넌트의 소유자가 로컬 플레이어가 조종 중인 폰일 때만 FWNetworkSubsystem을 반환, 아니면 nullptr.
+	 * 원격 아바타도 같은 AFWCharacter라 이 컴포넌트를 갖고 있으므로, 이 검사가 없으면
+	 * 원격 아바타의 값이 "내 값"으로 서버에 보고된다.
+	 */
+	UFWNetworkSubsystem* GetLocalPlayerNetwork() const;
 
 };

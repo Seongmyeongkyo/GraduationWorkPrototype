@@ -224,6 +224,7 @@ void AFWPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
 
+	FlushPendingMoveSend();
 	MoveTowardDestination();
 	DrawMoveMarker();
 	DrawMovePath();
@@ -271,10 +272,39 @@ void AFWPlayerController::SetMoveDestination(const FVector& Destination)
 	CachedDestination = Destination;
 	bHasMoveDestination = true;
 
+	bMoveSendPending = true;
+	FlushPendingMoveSend();
+}
+
+void AFWPlayerController::FlushPendingMoveSend()
+{
+	if (!bMoveSendPending)
+	{
+		return;
+	}
+
+	const double Now = GetWorld()->GetTimeSeconds();
+	if (bHasSentMove)
+	{
+		if (Now - LastMoveSendTime < MoveSendInterval)
+		{
+			return; // 예약 유지 - 다음 PlayerTick에서 재시도
+		}
+		if (FVector::DistSquared(CachedDestination, LastSentDestination) < FMath::Square(MinMoveSendDistance))
+		{
+			bMoveSendPending = false; // 지난번에 보낸 곳과 사실상 같은 지점 - 보낼 필요 없음
+			return;
+		}
+	}
+
 	if (UFWNetworkSubsystem* Net = GetNetwork())
 	{
-		Net->SendMove(Destination);
+		Net->SendMove(CachedDestination);
 	}
+	LastSentDestination = CachedDestination;
+	LastMoveSendTime = Now;
+	bHasSentMove = true;
+	bMoveSendPending = false;
 }
 
 void AFWPlayerController::MoveTowardDestination()

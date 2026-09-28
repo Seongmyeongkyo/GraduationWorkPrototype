@@ -3,6 +3,7 @@
 
 #include "FWHealManaActorComponent.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Pawn.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
@@ -24,14 +25,6 @@ void UFWHealManaActorComponent::BeginPlay()
 	CurrentHealth = MaxHealth;
 	CurrentMana = MaxMana;
 
-	if (UFWNetworkSubsystem* Net = GetNetwork())
-	{
-		Net->OnHealthResult.AddDynamic(this, &UFWHealManaActorComponent::HandleHealthResult);
-		Net->OnManaResult.AddDynamic(this, &UFWHealManaActorComponent::HandleManaResult);
-		Net->SendUpdateHealth(CurrentHealth);
-		Net->SendUpdateMana(CurrentMana);
-	}
-
 	if (ManaRegenPerSecond > 0.f)
 	{
 		GetWorld()->GetTimerManager().SetTimer(
@@ -48,7 +41,7 @@ bool UFWHealManaActorComponent::ConsumeMana(float Amount)
 
     CurrentMana -= Amount;
     OnManaChanged.Broadcast(this, CurrentMana, MaxMana, -Amount);
-    if (UFWNetworkSubsystem* Net = GetNetwork())
+    if (UFWNetworkSubsystem* Net = GetLocalPlayerNetwork())
     {
         Net->SendUpdateMana(CurrentMana);
     }
@@ -67,7 +60,7 @@ void UFWHealManaActorComponent::RegenerateMana(float Amount)
     if (Delta > 0.f)
     {
         OnManaChanged.Broadcast(this, CurrentMana, MaxMana, Delta);
-        if (UFWNetworkSubsystem* Net = GetNetwork())
+        if (UFWNetworkSubsystem* Net = GetLocalPlayerNetwork())
         {
             Net->SendUpdateMana(CurrentMana);
         }
@@ -85,7 +78,7 @@ void UFWHealManaActorComponent::ApplyDamage(float Amount)
     if (Delta != 0.f)
     {
         OnHealthChanged.Broadcast(this, CurrentHealth, MaxHealth, Delta);
-        if (UFWNetworkSubsystem* Net = GetNetwork())
+        if (UFWNetworkSubsystem* Net = GetLocalPlayerNetwork())
         {
             Net->SendUpdateHealth(CurrentHealth);
         }
@@ -104,7 +97,7 @@ void UFWHealManaActorComponent::Heal(float Amount)
     if (Delta > 0.f)
     {
         OnHealthChanged.Broadcast(this, CurrentHealth, MaxHealth, Delta);
-        if (UFWNetworkSubsystem* Net = GetNetwork())
+        if (UFWNetworkSubsystem* Net = GetLocalPlayerNetwork())
         {
             Net->SendUpdateHealth(CurrentHealth);
         }
@@ -116,33 +109,19 @@ void UFWHealManaActorComponent::TickManaRegen()
     RegenerateMana(ManaRegenPerSecond * ManaRegenTickInterval);
 }
 
-UFWNetworkSubsystem* UFWHealManaActorComponent::GetNetwork() const
+UFWNetworkSubsystem* UFWHealManaActorComponent::GetLocalPlayerNetwork() const
 {
+    // 원격 아바타는 Controller 없이 스폰되므로 여기서 걸러진다. 로컬 폰도 빙의 전(BeginPlay 직후)에는
+    // 걸러지지만, 그 시점엔 값이 초기값이고 어차피 아직 서버 연결 전이라 보고할 것이 없다.
+    const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+    if (!OwnerPawn || !OwnerPawn->IsLocallyControlled())
+    {
+        return nullptr;
+    }
+
     UWorld* World = GetWorld();
     UGameInstance* GI = World ? World->GetGameInstance() : nullptr;
     return GI ? GI->GetSubsystem<UFWNetworkSubsystem>() : nullptr;
-}
-
-void UFWHealManaActorComponent::HandleHealthResult(float ServerHealth)
-{
-    // Most calls here are just the server echoing back a value we ourselves just sent
-    // (ConsumeMana/RegenerateMana/ApplyDamage/Heal already applied it locally and
-    // broadcast the change) - only re-broadcast if this actually changes anything,
-    // e.g. a future case where the server value disagrees with our local one.
-    const float Delta = ServerHealth - CurrentHealth;
-    if (Delta == 0.f) return;
-
-    CurrentHealth = ServerHealth;
-    OnHealthChanged.Broadcast(this, CurrentHealth, MaxHealth, Delta);
-}
-
-void UFWHealManaActorComponent::HandleManaResult(float ServerMana)
-{
-    const float Delta = ServerMana - CurrentMana;
-    if (Delta == 0.f) return;
-
-    CurrentMana = ServerMana;
-    OnManaChanged.Broadcast(this, CurrentMana, MaxMana, Delta);
 }
 
 /** 주어진 액터에서 UFWHealManaActorComponent를 찾음 **/

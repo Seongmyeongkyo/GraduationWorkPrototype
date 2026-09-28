@@ -322,18 +322,6 @@ void UFWNetworkSubsystem::ProcessPacket(const uint8* Packet)
 		OnItemResult.Broadcast(P->itemId);
 		break;
 	}
-	case S2C_HEALTH_RESULT:
-	{
-		const auto* P = reinterpret_cast<const S2C_HealthResult*>(Packet);
-		OnHealthResult.Broadcast(P->currentHealth);
-		break;
-	}
-	case S2C_MANA_RESULT:
-	{
-		const auto* P = reinterpret_cast<const S2C_ManaResult*>(Packet);
-		OnManaResult.Broadcast(P->currentMana);
-		break;
-	}
 	default:
 		break;
 	}
