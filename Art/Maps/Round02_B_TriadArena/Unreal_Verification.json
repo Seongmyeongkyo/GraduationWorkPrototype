@@ -1,0 +1,105 @@
+{
+  "map": "/Game/Map/L_Round02_B_TriadArena",
+  "saved_level_reloaded": true,
+  "mesh_count": 17,
+  "marker_counts": {
+    "duel_spawn": 6,
+    "arena": 3,
+    "transfer_gate": 6,
+    "shop_interaction": 2,
+    "team_lobby": 2,
+    "lobby_spawn": 6,
+    "arena_selection": 6
+  },
+  "material_collision_scale_pivot_checks": [
+    {
+      "asset": "SM_R02B_Arena_Floors",
+      "bounds_error_cm": 0.0001,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Arena_Walls",
+      "bounds_error_cm": 0.0001,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Optional_Cover",
+      "bounds_error_cm": 0.0001,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Inlays_and_Decoration",
+      "bounds_error_cm": 0.0001,
+      "collision": "NoCollision"
+    },
+    {
+      "asset": "SM_R02B_Shop_Props",
+      "bounds_error_cm": 0.0004,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Layout_Labels",
+      "bounds_error_cm": 0.0002,
+      "collision": "NoCollision"
+    },
+    {
+      "asset": "SM_R02B_Corridor_1_2",
+      "bounds_error_cm": 0.0001,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Gate_1_to_2",
+      "bounds_error_cm": 0.0,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Gate_2_to_1",
+      "bounds_error_cm": 0.0,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Corridor_1_3",
+      "bounds_error_cm": 0.0001,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Gate_1_to_3",
+      "bounds_error_cm": 0.0,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Gate_3_to_1",
+      "bounds_error_cm": 0.0,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Corridor_2_3",
+      "bounds_error_cm": 0.0001,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Gate_2_to_3",
+      "bounds_error_cm": 0.0,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_Gate_3_to_2",
+      "bounds_error_cm": 0.0,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_TeamA_Lobby",
+      "bounds_error_cm": 0.0,
+      "collision": "BlockAll"
+    },
+    {
+      "asset": "SM_R02B_TeamB_Lobby",
+      "bounds_error_cm": 0.0,
+      "collision": "BlockAll"
+    }
+  ],
+  "independent_gate_actors": 6,
+  "independent_corridor_actors": 3,
+  "gameplay_implemented": false,
+  "limitations": "NullRHI commandlet verifies stored assets, not rendered Unreal output or gameplay."
+}

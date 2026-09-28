@@ -1,0 +1,67 @@
+{
+  "map": "/Game/Map/L_Round01_Emberwild",
+  "meshes": [
+    {
+      "name": "SM_R01_Ground_and_Trails",
+      "material_slots": 8,
+      "extent_cm": [
+        5600.00048828125,
+        5600.00048828125,
+        159.75
+      ],
+      "collision": true
+    },
+    {
+      "name": "SM_R01_Cliffs_and_Boundary",
+      "material_slots": 4,
+      "extent_cm": [
+        5624.436279296875,
+        5625.626953125,
+        153.9296064376831
+      ],
+      "collision": true
+    },
+    {
+      "name": "SM_R01_Camps_and_Ruins",
+      "material_slots": 9,
+      "extent_cm": [
+        4997.888671875,
+        4983.3779296875,
+        180.95071268081665
+      ],
+      "collision": false
+    },
+    {
+      "name": "SM_R01_Trees",
+      "material_slots": 4,
+      "extent_cm": [
+        5596.88818359375,
+        5612.948974609375,
+        371.4160461425781
+      ],
+      "collision": false
+    },
+    {
+      "name": "SM_R01_Bushes_NoCollision",
+      "material_slots": 3,
+      "extent_cm": [
+        4668.33154296875,
+        4653.868408203125,
+        61.98727798461914
+      ],
+      "collision": false
+    },
+    {
+      "name": "SM_R01_Fire_Visual_Placeholders",
+      "material_slots": 2,
+      "extent_cm": [
+        4449.576904296875,
+        4445.88037109375,
+        68.15855360031128
+      ],
+      "collision": false
+    }
+  ],
+  "markers": 73,
+  "gameplay_implemented": false
+}

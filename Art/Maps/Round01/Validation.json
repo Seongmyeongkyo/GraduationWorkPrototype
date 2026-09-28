@@ -1,0 +1,162 @@
+{
+  "method": "1m grid; cliff bounding circles + 0.6m player clearance; no UE NavMesh simulation",
+  "travel_speed_m_s": 6,
+  "paths": [
+    {
+      "from": "Spawn_A",
+      "to": "Camp_A1",
+      "distance_m": 25.14,
+      "seconds_at_6m_s": 4.19
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_A2",
+      "distance_m": 25.14,
+      "seconds_at_6m_s": 4.19
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_A3",
+      "distance_m": 37.07,
+      "seconds_at_6m_s": 6.18
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_A4",
+      "distance_m": 37.07,
+      "seconds_at_6m_s": 6.18
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_B1",
+      "distance_m": 105.75,
+      "seconds_at_6m_s": 17.62
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_B2",
+      "distance_m": 105.75,
+      "seconds_at_6m_s": 17.62
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_B3",
+      "distance_m": 104.95,
+      "seconds_at_6m_s": 17.49
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_B4",
+      "distance_m": 104.95,
+      "seconds_at_6m_s": 17.49
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_NW1",
+      "distance_m": 80.73,
+      "seconds_at_6m_s": 13.46
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_NW2",
+      "distance_m": 91.77,
+      "seconds_at_6m_s": 15.29
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_SE1",
+      "distance_m": 83.56,
+      "seconds_at_6m_s": 13.93
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Camp_SE2",
+      "distance_m": 64.9,
+      "seconds_at_6m_s": 10.82
+    },
+    {
+      "from": "Spawn_A",
+      "to": "Arena",
+      "distance_m": 65.74,
+      "seconds_at_6m_s": 10.96
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_A1",
+      "distance_m": 105.75,
+      "seconds_at_6m_s": 17.62
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_A2",
+      "distance_m": 105.75,
+      "seconds_at_6m_s": 17.62
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_A3",
+      "distance_m": 104.95,
+      "seconds_at_6m_s": 17.49
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_A4",
+      "distance_m": 104.95,
+      "seconds_at_6m_s": 17.49
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_B1",
+      "distance_m": 25.14,
+      "seconds_at_6m_s": 4.19
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_B2",
+      "distance_m": 25.14,
+      "seconds_at_6m_s": 4.19
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_B3",
+      "distance_m": 37.07,
+      "seconds_at_6m_s": 6.18
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_B4",
+      "distance_m": 37.07,
+      "seconds_at_6m_s": 6.18
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_NW1",
+      "distance_m": 83.56,
+      "seconds_at_6m_s": 13.93
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_NW2",
+      "distance_m": 64.9,
+      "seconds_at_6m_s": 10.82
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_SE1",
+      "distance_m": 80.73,
+      "seconds_at_6m_s": 13.46
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Camp_SE2",
+      "distance_m": 91.77,
+      "seconds_at_6m_s": 15.29
+    },
+    {
+      "from": "Spawn_B",
+      "to": "Arena",
+      "distance_m": 65.74,
+      "seconds_at_6m_s": 10.96
+    }
+  ]
+}
