@@ -144,7 +144,7 @@ for m in LAYOUT['markers']:
     report['markers']+=1
 
 sun=spawn(unreal.DirectionalLight,'Round01_Sun',(0,0,12000),'Round01/Lighting')
-sun.set_actor_rotation(unreal.Rotator(-55,-35,0),False)
+sun.set_actor_rotation(unreal.Rotator(pitch=-55,yaw=55 if LAYOUT.get('coordinate_frame')=='X_NORTH_Y_WEST' else -35,roll=0),False)
 sun.light_component.set_mobility(unreal.ComponentMobility.MOVABLE)
 sun.light_component.set_intensity(3.0)
 sun.light_component.set_editor_property('atmosphere_sun_light',True)
@@ -169,12 +169,19 @@ for s in LAYOUT['spawns']:
     light.light_component.set_editor_property('attenuation_radius',650)
 
 # Editor inspection camera; leaves the project's game mode and default maps unchanged.
-view=spawn(unreal.CameraActor,'Round01_OverviewCamera',(10400,13600,16000),'Round01/Presentation')
+view_location=(-13600,10400,16000) if LAYOUT.get('coordinate_frame')=='X_NORTH_Y_WEST' else (10400,13600,16000)
+view=spawn(unreal.CameraActor,'Round01_OverviewCamera',view_location,'Round01/Presentation')
 direction=unreal.Vector(0,0,0)-view.get_actor_location()
 view.set_actor_rotation(unreal.MathLibrary.make_rot_from_x(direction),False)
 view.camera_component.set_editor_property('projection_mode',unreal.CameraProjectionMode.ORTHOGRAPHIC)
 view.camera_component.set_editor_property('ortho_width',16300)
 view.camera_component.set_editor_property('aspect_ratio',1600/1400)
+if LAYOUT.get('coordinate_frame')=='X_NORTH_Y_WEST':
+    top=spawn(unreal.CameraActor,'Round01_NorthTopCamera',(0,0,16000),'Round01/Presentation')
+    top.set_actor_rotation(unreal.Rotator(pitch=-90,yaw=0,roll=0),False)
+    top.camera_component.set_editor_property('projection_mode',unreal.CameraProjectionMode.ORTHOGRAPHIC)
+    top.camera_component.set_editor_property('ortho_width',12600)
+    top.camera_component.set_editor_property('aspect_ratio',1)
 # A commandlet has no interactive viewport; the saved CameraActor is the inspection view.
 if not levels.save_current_level(): raise RuntimeError('Could not save level')
 unreal.EditorAssetLibrary.save_directory(BASE,only_if_is_dirty=False,recursive=True)

@@ -1,0 +1,14 @@
+{
+  "layout_source": "Round01_v2",
+  "size_m": [
+    112,
+    112
+  ],
+  "camps": 8,
+  "bushes": 16,
+  "trees": 216,
+  "route_wall_rays": 939,
+  "wall_intrusions": [],
+  "marker_positions_preserved": true,
+  "method": "Original path centerlines and spawn/camp markers against evaluated wall meshes; not gameplay testing"
+}

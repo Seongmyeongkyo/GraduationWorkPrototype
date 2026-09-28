@@ -1,0 +1,41 @@
+{
+  "map": "/Game/Map/L_Round01_Emberwild_v2",
+  "reloaded": true,
+  "coordinate_convention": "Unreal +X north/up, +Y east/right",
+  "map_size_cm": [
+    11200.001953125,
+    11200.001953125
+  ],
+  "static_mesh_actors": 6,
+  "marker_counts": {
+    "arena": 1,
+    "monster_camp": 8,
+    "monster_slot": 24,
+    "team_spawn": 2,
+    "player_spawn": 6,
+    "bush": 16
+  },
+  "spawn_A_cm": [
+    -4400.0,
+    -4400.0,
+    10.0
+  ],
+  "spawn_B_cm": [
+    4400.0,
+    4400.0,
+    10.0
+  ],
+  "north_camera_up": [
+    1.0000000000000002,
+    0.0,
+    -2.220446049250313e-16
+  ],
+  "north_camera_right": [
+    0.0,
+    1.0,
+    -0.0
+  ],
+  "material_references": true,
+  "collision_profiles": true,
+  "gameplay_tested": false
+}

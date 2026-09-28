@@ -11,6 +11,8 @@ import sys
 import heapq
 from pathlib import Path
 from mathutils import Vector
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from Round01Coordinates import ensure_north
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'Art' / 'Maps' / 'Round01'
@@ -471,6 +473,7 @@ layout={'title':'Emberwild / Round 01','version':'1.0','seed':280926,'units':'me
     'arena_radius_m':18,'coordinate_convention':'Blender XY: +X right/east, +Y up/north; Z up. UE export: X=x*100, Y=-y*100, Z=z*100.',
     'camps':camps,'spawns':spawns,'bushes':bushlist,'paths':paths,'walls':WALLS,'markers':MARKERS,
     'materials':PALETTE,'validation':validation,'gameplay_implemented':False}
+ensure_north(scene,layout)
 (OUT/'Round01_Layout.json').write_text(json.dumps(layout,ensure_ascii=False,indent=2),encoding='utf-8')
 (OUT/'Validation.json').write_text(json.dumps(validation,indent=2),encoding='utf-8')
 
@@ -506,7 +509,7 @@ for collection in exportcols:
             uv.data[li].uv=(co[axes[0]]/4,co[axes[1]]/4)
     filename=obj.name+'.fbx'
     bpy.ops.export_scene.fbx(filepath=str(OUT/'Exports'/filename),use_selection=True,
-        apply_unit_scale=True,apply_scale_options='FBX_SCALE_UNITS',axis_forward='-Y',axis_up='Z',
+        apply_unit_scale=True,apply_scale_options='FBX_SCALE_NONE',axis_forward='-Y',axis_up='Z',
         object_types={'MESH'},use_mesh_modifiers=True,mesh_smooth_type='FACE',use_triangles=True,
         bake_anim=False,add_leaf_bones=False,path_mode='AUTO')
     exportmeta.append({'file':filename,'asset':obj.name,'materials':[m.name for m in obj.data.materials],

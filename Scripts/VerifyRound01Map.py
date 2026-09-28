@@ -9,10 +9,12 @@ from collections import Counter
 import unreal
 
 root=Path(__file__).resolve().parents[1]
-variant='v2' if '-round01variant=v2' in unreal.SystemLibrary.get_command_line().lower() else 'v1'
+variant=globals().get('ROUND01_VARIANT_OVERRIDE') or ('v2' if '-round01variant=v2' in unreal.SystemLibrary.get_command_line().lower() else 'v1')
 suffix='_v2' if variant=='v2' else ''
 base='/Game/Environment/Round01'+suffix
 source=root/'Art'/'Maps'/('Round01'+suffix)
+layout=json.loads((source/'Round01_Layout.json').read_text(encoding='utf-8'))
+north=layout.get('coordinate_frame')=='X_NORTH_Y_WEST'
 levels=unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 assert levels.load_level('/Game/Map/L_Round01_Emberwild'+suffix)
 actors=unreal.get_editor_subsystem(unreal.EditorActorSubsystem).get_all_level_actors()
@@ -51,12 +53,13 @@ for index,slot in enumerate(propmesh.static_materials):
         vertices,*_=unreal.ProceduralMeshLibrary.get_section_from_static_mesh(propmesh,0,index)
         assert vertices,'Banner section did not retain geometry'
         flag=[sum(getattr(v,k) for v in vertices)/len(vertices) for k in ('x','y','z')]
-        assert flag[0]<-4000 and flag[1]>4000,flag
+        assert flag[0]<-4000 and (flag[1]<-4000 if north else flag[1]>4000),flag
 assert flag is not None
 report={'saved_level_reloaded':True,'mesh_layers':len(static),'marker_counts':dict(counts),
     'terrain_size_cm':[floor.get_bounds().box_extent.x*2,floor.get_bounds().box_extent.y*2],
     'terrain_vertex_colors':True,'materials_resolved':True,'collision_settings_verified':True,
     'team_A_banner_centroid_cm':flag,'coordinate_transform_verified':True,
+    'coordinate_convention':layout['coordinate_convention'],
     'render_validation':'Blender previews inspected; Unreal commandlet used NullRHI, not a rendered or gameplay test'}
 (source/'Unreal_Verification.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
 unreal.log('ROUND01_VERIFIED '+json.dumps(report))

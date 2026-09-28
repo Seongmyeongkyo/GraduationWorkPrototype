@@ -196,18 +196,19 @@ def create(source):
     verify(source,layout)
 
 
-for slug in ('Round02_A_CrownArena','Round02_B_TriadArena'):
-    source=ROOT/'Art'/'Maps'/slug
-    command=unreal.SystemLibrary.get_command_line().lower()
-    if '-round02materialsonly' in command or '-round02refreshassets' in command:
-        layout=json.loads((source/'Layout.json').read_text(encoding='utf-8'))
-        if not unreal.EditorAssetLibrary.does_asset_exist(layout['ue_map']):
-            raise RuntimeError('Material-only refresh requires an existing concept level')
-        materials=create_materials(layout)
-        if '-round02refreshassets' in command:
-            # Explicit refresh for generated assets, preserving level actors and their transforms.
-            import_meshes(source,layout,materials)
-        verify(source,layout)
-    else:
-        create(source)
-unreal.log('ROUND02_CONCEPTS_COMPLETE')
+if __name__=='__main__':
+    for slug in ('Round02_A_CrownArena','Round02_B_TriadArena'):
+        source=ROOT/'Art'/'Maps'/slug
+        command=unreal.SystemLibrary.get_command_line().lower()
+        if '-round02materialsonly' in command or '-round02refreshassets' in command:
+            layout=json.loads((source/'Layout.json').read_text(encoding='utf-8'))
+            if not unreal.EditorAssetLibrary.does_asset_exist(layout['ue_map']):
+                raise RuntimeError('Material-only refresh requires an existing concept level')
+            materials=create_materials(layout)
+            if '-round02refreshassets' in command:
+                # Explicit refresh for generated assets, preserving level actors and their transforms.
+                import_meshes(source,layout,materials)
+            verify(source,layout)
+        else:
+            create(source)
+    unreal.log('ROUND02_CONCEPTS_COMPLETE')
