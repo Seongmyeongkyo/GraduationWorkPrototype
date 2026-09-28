@@ -41,9 +41,23 @@ bool GameServer::Init(unsigned short Port) {
     CreateIoCompletionPort((HANDLE)m_server, m_iocp, -1, 0);
 
     PostAccept();
+    m_next_mana_regen = std::chrono::steady_clock::now() + std::chrono::seconds(1);
 
     Logger::Log("Server is running on port " + std::to_string(Port) + "...");
     return true;
+}
+
+void GameServer::TickManaRegen() {
+    const auto now = std::chrono::steady_clock::now();
+    if (now < m_next_mana_regen) return;
+
+    // 1초 간격 유지. 오래 밀렸으면 몰아서 회복하지 않고 지금부터 다시 1초.
+    m_next_mana_regen += std::chrono::seconds(1);
+    if (m_next_mana_regen < now) m_next_mana_regen = now + std::chrono::seconds(1);
+
+    for (auto& cl : clients) {
+        if (cl.m_is_connected) cl.regen_mana(MANA_REGEN_PER_SECOND);
+    }
 }
 
 void GameServer::PostAccept() {
@@ -110,16 +124,24 @@ void GameServer::Run() {
 }
 
 void GameServer::WorkerLoop() {
+    // 통신이 없어도 이 간격으로 깨어나서 마나 회복 시점을 확인한다.
+    constexpr DWORD REGEN_CHECK_INTERVAL_MS = 100;
+
     for (;;) {
         DWORD num_bytes;
         ULONG_PTR key;
         LPOVERLAPPED over;
-        // 여기서 무기한 대기하므로 락을 잡고 있으면 안 된다 (다른 워커가 전부 멈춤).
-        BOOL ret = GetQueuedCompletionStatus(m_iocp, &num_bytes, &key, &over, INFINITE);
+        // 여기서 대기하는 동안 락을 잡고 있으면 안 된다 (다른 워커가 전부 멈춤).
+        BOOL ret = GetQueuedCompletionStatus(m_iocp, &num_bytes, &key, &over, REGEN_CHECK_INTERVAL_MS);
         const DWORD io_error = (ret == FALSE) ? GetLastError() : 0;
         EXP_OVER* exp_over = reinterpret_cast<EXP_OVER*>(over);
 
         std::lock_guard<std::mutex> lock(g_clients_mutex);
+
+        TickManaRegen();
+
+        // 꺼낸 완료 통지가 없음 (타임아웃). key도 채워지지 않았으므로 아래로 내려가면 안 된다.
+        if (over == nullptr) continue;
 
         if (ret == FALSE && exp_over && exp_over->m_iotype == IO_ACCEPT) {
             // 이 연결 하나만 실패한 것 (수락 전 상대가 리셋 등). 다시 걸지 않으면 이후 접속을 영영 못 받는다.

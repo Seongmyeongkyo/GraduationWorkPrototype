@@ -176,6 +176,15 @@ protected:
 	void HandlePlayerHit(int32 AttackerId, int32 TargetId, int32 Damage);
 
 	UFUNCTION()
+	void HandlePlayerSkill(int32 PlayerId, int32 SkillIndex, float DirX, float DirY);
+
+	UFUNCTION()
+	void HandleSkillFailed(int32 SkillIndex);
+
+	UFUNCTION()
+	void HandleManaUpdate(float CurrentMana, float MaxMana);
+
+	UFUNCTION()
 	void HandleConnectionFailed(const FString& Reason);
 
 private:
@@ -198,6 +207,12 @@ private:
 	bool bMoveSendPending = false;
 
 	UFWNetworkSubsystem* GetNetwork() const;
+
+	/**
+	 * Server connected: sends the skill request toward the cursor; mana is checked/spent on the server and the skill fires in HandlePlayerSkill.
+	 * No server: applies the same mana rule locally and fires immediately.
+	 */
+	void RequestSkill(int32 SkillIndex);
 
 	/** 현재 목표를 향해 캐릭터를 이동시킴 (PlayerTick 에서 호출) */
 	void MoveTowardDestination();

@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include "Session.h"
 
 class GameServer {
@@ -23,8 +24,12 @@ private:
     // 워커 스레드 본체. 여러 스레드가 동시에 돌며 g_clients_mutex로 clients 접근을 직렬화한다.
     void WorkerLoop();
 
+    // 1초가 지났으면 접속 중인 모든 플레이어의 마나를 회복시킨다. g_clients_mutex를 잡은 상태에서 호출할 것.
+    void TickManaRegen();
+
     SOCKET m_server = INVALID_SOCKET;
     SOCKET m_client_socket = INVALID_SOCKET;
     HANDLE m_iocp = nullptr;
     EXP_OVER m_accept_over{ IO_ACCEPT };
+    std::chrono::steady_clock::time_point m_next_mana_regen;
 };

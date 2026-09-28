@@ -20,6 +20,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FFWOnPlayerSkill, int32, PlayerId,
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FFWOnPlayerHit, int32, AttackerId, int32, TargetId, int32, Damage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnExpResult, int32, Amount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnItemResult, int32, ItemId);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FFWOnManaUpdate, float, CurrentMana, float, MaxMana);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnSkillFailed, int32, SkillIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnConnectionFailed, const FString&, Reason);
 
 /**
@@ -51,6 +53,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network")
 	bool IsConnected() const;
 
+	/**
+	 * True while the server owns server-managed values (mana, ...). When false - server not running,
+	 * still connecting, or connection lost - gameplay code must run the client-side fallback using
+	 * the same rules (FWNet constants in NetworkProtocol.h). Every server-managed value branches on this.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	bool IsServerAuthoritative() const;
+
 	/** Queues the login packet; sent as soon as the connection finishes if not connected yet. */
 	UFUNCTION(BlueprintCallable, Category = "Network")
 	void SendLogin(const FString& Username);
@@ -77,9 +87,6 @@ public:
 	// Stat sync - rough placeholders, see NetworkProtocol.h.
 	UFUNCTION(BlueprintCallable, Category = "Network")
 	void SendUpdateHealth(float CurrentHealth);
-
-	UFUNCTION(BlueprintCallable, Category = "Network")
-	void SendUpdateMana(float CurrentMana);
 
 	UPROPERTY(BlueprintAssignable, Category = "Network")
 	FFWOnLoginResult OnLoginResult;
@@ -111,6 +118,13 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Network")
 	FFWOnItemResult OnItemResult;
+
+	/** Mana is owned by the server; these only ever fire for the local player. */
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnManaUpdate OnManaUpdate;
+
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnSkillFailed OnSkillFailed;
 
 	/** Broadcast whenever a connection attempt fails, immediately or after the async handshake times out/errors. */
 	UPROPERTY(BlueprintAssignable, Category = "Network")

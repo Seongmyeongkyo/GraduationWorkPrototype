@@ -10,13 +10,20 @@ namespace FWNet
 	constexpr int32_t RECV_CAPACITY = 4096;
 	constexpr int32_t SKILL_COUNT = 3;
 
+	// Game rules. The server applies these while connected; the client applies the exact
+	// same rules itself when it isn't (offline fallback). Keep in sync with Server/Protocol.h.
+	constexpr float MAX_MANA = 100.f;
+	constexpr float SKILL_MANA_COST = 20.f;
+	constexpr float MANA_REGEN_PER_SECOND = 5.f;
+
 	enum PACKET_TYPE : uint8_t
 	{
 		C2S_LOGIN = 0, C2S_MOVE,
 		S2C_LOGIN_RESULT, S2C_AVATAR_INFO, S2C_ADD_PLAYER, S2C_REMOVE_PLAYER, S2C_MOVE_PLAYER,
 		C2S_ATTACK, C2S_SKILL, C2S_HIT, C2S_GET_EXP, C2S_GET_ITEM,
 		S2C_PLAYER_ATTACK, S2C_PLAYER_SKILL, S2C_PLAYER_HIT, S2C_EXP_RESULT, S2C_ITEM_RESULT,
-		C2S_UPDATE_HEALTH, C2S_UPDATE_MANA
+		C2S_UPDATE_HEALTH,
+		S2C_MANA_UPDATE, S2C_SKILL_FAIL
 	};
 
 #pragma pack(push, 1)
@@ -161,7 +168,7 @@ namespace FWNet
 		int32_t itemId;
 	};
 
-	// ---- Health / mana sync (rough placeholders, mirrors Server/Protocol.h) ----
+	// ---- Health sync (rough placeholder, mirrors Server/Protocol.h) ----
 	// Report-only: the server stores the value and sends nothing back.
 
 	struct C2S_UpdateHealth
@@ -171,11 +178,23 @@ namespace FWNet
 		float currentHealth;
 	};
 
-	struct C2S_UpdateMana
+	// ---- Mana (server-owned) ----
+
+	// Sent to the owner only: right after login, after each skill use, and on every regen tick.
+	struct S2C_ManaUpdate
 	{
 		uint8_t size;
 		PACKET_TYPE type;
 		float currentMana;
+		float maxMana;
+	};
+
+	// The server rejected a C2S_Skill (currently only for not enough mana). Owner only.
+	struct S2C_SkillFail
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		uint8_t skillIndex;
 	};
 #pragma pack(pop)
 }

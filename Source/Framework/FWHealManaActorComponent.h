@@ -33,14 +33,6 @@ public:
 
 	
 	/** 상태 변경 API. 로컬로 즉시 적용하고, 로컬 플레이어가 조종 중인 캐릭터라면 새 값을 서버에 보고한다(응답 없음). **/
-	/** 마나 소모. true = 소모 성공. false = 부족하거나 죽어있음. **/
-	UFUNCTION(BlueprintCallable, Category = "FW|Attribute")
-	bool ConsumeMana(float Amount);
-
-	/** 마나 회복 (수동/자동 재생 공용). **/
-	UFUNCTION(BlueprintCallable, Category = "FW|Attribute")
-	void RegenerateMana(float Amount);
-
 	/** 피격 등으로 체력 감소. **/
 	UFUNCTION(BlueprintCallable, Category = "FW|Attribute")
 	void ApplyDamage(float Amount);
@@ -48,6 +40,12 @@ public:
 	/** 회복 아이템/스킬 등으로 체력 증가. **/
 	UFUNCTION(BlueprintCallable, Category = "FW|Attribute")
 	void Heal(float Amount);
+
+	/** Online path: mirrors the latest mana the server sent. Called by AFWPlayerController for the local pawn. */
+	void ApplyServerMana(float NewCurrent, float NewMax);
+
+	/** Offline path (no server): spends mana locally with the server's rule. Returns false if there isn't enough. */
+	bool TryConsumeManaOffline(float Amount);
 
 	/** Getter **/
 	UFUNCTION(BlueprintPure, Category = "FW|Attribute")
@@ -79,30 +77,25 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	/** 스탯. 이 클라이언트가 로컬로 소유/갱신한다. 서버로는 보고만 하고 받지는 않는다. **/
+	/** 스탯. 체력은 이 클라이언트가 갱신해서 서버에 보고한다. 마나는 서버 접속 중엔 서버 값을 반영하고, 미접속 시엔 같은 규칙으로 직접 계산한다. **/
 	UPROPERTY(EditAnywhere, Category = "FW|Attribute|Health")
 	float MaxHealth = 100.f;
 
 	UPROPERTY(VisibleAnywhere, Category = "FW|Attribute|Health")
 	float CurrentHealth = 100.f;
 
-	UPROPERTY(EditAnywhere, Category = "FW|Attribute|Mana")
+	UPROPERTY(VisibleAnywhere, Category = "FW|Attribute|Mana")
 	float MaxMana = 100.f;
 
 	UPROPERTY(VisibleAnywhere, Category = "FW|Attribute|Mana")
 	float CurrentMana = 100.f;
 
-	/** 자동 마나 재생 **/
-	/** 초당 마나 회복량. 0으로 두면 자동 재생 없음. **/
-	UPROPERTY(EditAnywhere, Category = "FW|Attribute|Mana")
-	float ManaRegenPerSecond = 5.f;
+	/** Offline fallback regen, same rule as the server (every 1s). Does nothing while the server is authoritative. */
+	FTimerHandle OfflineManaRegenTimer;
+	void TickOfflineManaRegen();
 
-	/** 회복 틱 간격. 짧을수록 부드럽지만 네트워크 부하 증가. **/
-	UPROPERTY(EditAnywhere, Category = "FW|Attribute|Mana")
-	float ManaRegenTickInterval = 0.5f;
-
-	FTimerHandle ManaRegenTimerHandle;
-	void TickManaRegen();
+	/** True only for the locally controlled pawn while no server is managing values. Always false for remote avatars. */
+	bool UsesOfflineFallback() const;
 
 	/**
 	 * 이 컴포넌트의 소유자가 로컬 플레이어가 조종 중인 폰일 때만 FWNetworkSubsystem을 반환, 아니면 nullptr.

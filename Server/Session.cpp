@@ -19,7 +19,7 @@ void SESSION::reset() {
     m_prev_recv = 0;
     memset(m_username, 0, sizeof(m_username));
     m_x = 0.f; m_y = 0.f; m_z = 0.f;
-    m_hp = 100.f; m_mp = 100.f; m_exp = 0;
+    m_hp = 100.f; m_mp = MAX_MANA; m_exp = 0;
     m_ip.clear();
 }
 
@@ -143,6 +143,30 @@ void SESSION::send_item_result(int32_t item_id) {
     do_send(packet.size, reinterpret_cast<char*>(&packet));
 }
 
+void SESSION::send_mana_update() {
+    S2C_ManaUpdate packet;
+    packet.size = sizeof(S2C_ManaUpdate);
+    packet.type = S2C_MANA_UPDATE;
+    packet.currentMana = m_mp;
+    packet.maxMana = MAX_MANA;
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
+void SESSION::send_skill_fail(uint8_t skillIndex) {
+    S2C_SkillFail packet;
+    packet.size = sizeof(S2C_SkillFail);
+    packet.type = S2C_SKILL_FAIL;
+    packet.skillIndex = skillIndex;
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
+void SESSION::regen_mana(float amount) {
+    if (m_mp >= MAX_MANA) return;
+    m_mp += amount;
+    if (m_mp > MAX_MANA) m_mp = MAX_MANA; // std::min은 windows.h의 min 매크로와 충돌해서 쓰지 않음
+    send_mana_update();
+}
+
 void SESSION::process_packet(unsigned char* p) {
     PACKET_TYPE type = static_cast<PACKET_TYPE>(p[1]);
     switch (type) {
@@ -152,6 +176,7 @@ void SESSION::process_packet(unsigned char* p) {
         strncpy_s(m_username, packet->username, MAX_NAME_LEN - 1);
         Logger::Log("[LOGIN] id=" + to_string(m_id) + " ip=" + m_ip + " username=" + m_username);
         send_avatar_info();
+        send_mana_update();
 
         for (auto& other : clients) {
             if (!other.m_is_connected || other.m_id == m_id) continue;
@@ -178,9 +203,17 @@ void SESSION::process_packet(unsigned char* p) {
     }
     case C2S_SKILL: {
         C2S_Skill* packet = reinterpret_cast<C2S_Skill*>(p);
-        Logger::Log("[SKILL] id=" + to_string(m_id) + " skill=" + to_string(static_cast<int>(packet->skillIndex)) + " dir=(" + to_string(packet->dirX) + ", " + to_string(packet->dirY) + ")");
+        const std::string skill = to_string(static_cast<int>(packet->skillIndex));
+        if (m_mp < SKILL_MANA_COST) {
+            Logger::Log("[SKILL FAIL] id=" + to_string(m_id) + " skill=" + skill + " mp=" + to_string(m_mp));
+            send_skill_fail(packet->skillIndex);
+            break;
+        }
+        m_mp -= SKILL_MANA_COST;
+        Logger::Log("[SKILL] id=" + to_string(m_id) + " skill=" + skill + " mp=" + to_string(m_mp));
         for (auto& cl : clients)
             if (cl.m_is_connected) cl.send_skill(m_id, packet->skillIndex, packet->dirX, packet->dirY);
+        send_mana_update();
         break;
     }
     case C2S_HIT: {
@@ -207,12 +240,6 @@ void SESSION::process_packet(unsigned char* p) {
         C2S_UpdateHealth* packet = reinterpret_cast<C2S_UpdateHealth*>(p);
         m_hp = packet->currentHealth;
         Logger::Log("[HEALTH] id=" + to_string(m_id) + " hp=" + to_string(m_hp));
-        break;
-    }
-    case C2S_UPDATE_MANA: {
-        C2S_UpdateMana* packet = reinterpret_cast<C2S_UpdateMana*>(p);
-        m_mp = packet->currentMana;
-        Logger::Log("[MANA] id=" + to_string(m_id) + " mp=" + to_string(m_mp));
         break;
     }
     default: break;

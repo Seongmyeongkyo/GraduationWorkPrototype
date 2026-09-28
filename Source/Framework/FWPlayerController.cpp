@@ -141,6 +141,9 @@ void AFWPlayerController::BeginPlay()
 		Net->OnPlayerRemoved.AddDynamic(this, &AFWPlayerController::HandlePlayerRemoved);
 		Net->OnPlayerMoved.AddDynamic(this, &AFWPlayerController::HandlePlayerMoved);
 		Net->OnPlayerHit.AddDynamic(this, &AFWPlayerController::HandlePlayerHit);
+		Net->OnPlayerSkill.AddDynamic(this, &AFWPlayerController::HandlePlayerSkill);
+		Net->OnSkillFailed.AddDynamic(this, &AFWPlayerController::HandleSkillFailed);
+		Net->OnManaUpdate.AddDynamic(this, &AFWPlayerController::HandleManaUpdate);
 		Net->OnConnectionFailed.AddDynamic(this, &AFWPlayerController::HandleConnectionFailed);
 
 		if (Net->ConnectToServer(ServerIP, ServerPort))
@@ -487,49 +490,56 @@ void AFWPlayerController::OnZoom(const FInputActionValue& Value)
 	}
 }
 
-/** 스킬 발동 비용 **/
-static constexpr float SKILL_Q_MANA_COST = 30.f;
-
 // ----------------------------------------------------------------------------
 // 스킬
 // ----------------------------------------------------------------------------
-void AFWPlayerController::OnSkillQ(const FInputActionValue& /*Value*/) 
-{ 
-	// 캐릭터 유효성 체크
+void AFWPlayerController::OnSkillQ(const FInputActionValue& /*Value*/) { RequestSkill(0); }
+void AFWPlayerController::OnSkillW(const FInputActionValue& /*Value*/) { RequestSkill(1); }
+void AFWPlayerController::OnSkillE(const FInputActionValue& /*Value*/) { RequestSkill(2); }
+void AFWPlayerController::OnSkillR(const FInputActionValue& /*Value*/) { RequestSkill(3); }
+
+void AFWPlayerController::RequestSkill(int32 SkillIndex)
+{
 	APawn* MyPawn = GetPawn();
-	if (!MyPawn) {
-		return;
-	}
-
-	// 캐릭터의 AttributeComponent 체크
-	AFWCharacter* MyChar = Cast<AFWCharacter>(MyPawn);
-	if (!MyChar || !MyChar->AttributeComp) {
-		return;
-	}
-
-	// 마나 체크 (부족하면 발동 취소)
-	if (MyChar->AttributeComp->GetCurrentMana() < SKILL_Q_MANA_COST)
+	if (!MyPawn)
 	{
-		if (GEngine)
+		return;
+	}
+
+	UFWNetworkSubsystem* Net = GetNetwork();
+	if (!Net || !Net->IsServerAuthoritative())
+	{
+		// Offline fallback: the server's mana rule, resolved locally and immediately.
+		AFWCharacter* MyChar = Cast<AFWCharacter>(MyPawn);
+		if (!MyChar || !MyChar->AttributeComp)
 		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,                             // Key (-1 = 새 메시지)
-				1.5f,                           // 표시 시간 (초)
-				FColor::Cyan,                   // 색상
-				TEXT("마나가 부족합니다")       // 메시지
-			);
+			return;
+		}
+		if (MyChar->AttributeComp->TryConsumeManaOffline(FWNet::SKILL_MANA_COST))
+		{
+			ActivateSkill(SkillIndex);
+		}
+		else
+		{
+			HandleSkillFailed(SkillIndex); // same reaction as a server rejection
 		}
 		return;
 	}
 
-	/** 마나 소모(서버 리팩터 시, 서버에서만 소모하도록 변경 필요) **/
-	MyChar->AttributeComp->ConsumeMana(SKILL_Q_MANA_COST);
+	// Aim toward the cursor; fall back to the pawn's facing if there's nothing under it.
+	FVector Dir = MyPawn->GetActorForwardVector();
+	FHitResult Hit;
+	if (GetHitResultUnderCursor(MoveTraceChannel, /*bTraceComplex=*/false, Hit) && Hit.bBlockingHit)
+	{
+		const FVector ToCursor = (Hit.ImpactPoint - MyPawn->GetActorLocation()).GetSafeNormal2D();
+		if (!ToCursor.IsNearlyZero())
+		{
+			Dir = ToCursor;
+		}
+	}
 
-	ActivateSkill(0);
+	Net->SendSkill(SkillIndex, Dir.X, Dir.Y);
 }
-void AFWPlayerController::OnSkillW(const FInputActionValue& /*Value*/) { ActivateSkill(1); }
-void AFWPlayerController::OnSkillE(const FInputActionValue& /*Value*/) { ActivateSkill(2); }
-void AFWPlayerController::OnSkillR(const FInputActionValue& /*Value*/) { ActivateSkill(3); }
 
 void AFWPlayerController::OnRecenterCamera(const FInputActionValue& Value)
 {
@@ -690,6 +700,34 @@ void AFWPlayerController::HandlePlayerHit(int32 /*AttackerId*/, int32 TargetId, 
 		if (MyChar->AttributeComp)
 		{
 			MyChar->AttributeComp->ApplyDamage(static_cast<float>(Damage));
+		}
+	}
+}
+
+void AFWPlayerController::HandlePlayerSkill(int32 PlayerId, int32 SkillIndex, float /*DirX*/, float /*DirY*/)
+{
+	// The server already spent the mana. No skill visuals for other players yet - only fire our own.
+	if (PlayerId == LocalPlayerId)
+	{
+		ActivateSkill(SkillIndex);
+	}
+}
+
+void AFWPlayerController::HandleSkillFailed(int32 /*SkillIndex*/)
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, TEXT("마나가 부족합니다"));
+	}
+}
+
+void AFWPlayerController::HandleManaUpdate(float CurrentMana, float MaxMana)
+{
+	if (AFWCharacter* MyChar = Cast<AFWCharacter>(GetPawn()))
+	{
+		if (MyChar->AttributeComp)
+		{
+			MyChar->AttributeComp->ApplyServerMana(CurrentMana, MaxMana);
 		}
 	}
 }

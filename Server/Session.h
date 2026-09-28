@@ -16,7 +16,8 @@ public:
     DWORD m_recv_flag;
     char m_username[MAX_NAME_LEN];
     float m_x, m_y, m_z;
-    float m_hp, m_mp;   // 클라이언트가 마지막으로 보고한 값 (검증 안 함)
+    float m_hp;         // 클라이언트가 마지막으로 보고한 값 (검증 안 함)
+    float m_mp;         // 서버가 관리 (스킬 사용 시 차감, 1초마다 회복)
     int32_t m_exp;      // C2S_GetExp로 받은 양의 누적
     std::string m_ip;   // 로그용
 
@@ -40,6 +41,11 @@ public:
     void send_hit(int attacker_id, int target_id, int32_t damage);
     void send_exp_result(int32_t amount);
     void send_item_result(int32_t item_id);
+
+    // 마나
+    void send_mana_update();
+    void send_skill_fail(uint8_t skillIndex);
+    void regen_mana(float amount); // MAX_MANA까지만 회복, 실제로 변했을 때만 본인에게 전송
 
     void process_packet(unsigned char* p);
 };

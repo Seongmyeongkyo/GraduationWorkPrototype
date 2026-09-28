@@ -21,50 +21,13 @@ void UFWHealManaActorComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	/** 초기 HP 및 MP 설정 **/
+	/** 초기 HP/MP 설정 (서버에 접속하면 마나는 서버가 보낸 값으로 덮어씀) **/
 	CurrentHealth = MaxHealth;
+	MaxMana = FWNet::MAX_MANA;
 	CurrentMana = MaxMana;
 
-	if (ManaRegenPerSecond > 0.f)
-	{
-		GetWorld()->GetTimerManager().SetTimer(
-			ManaRegenTimerHandle,
-			this, &UFWHealManaActorComponent::TickManaRegen,
-			ManaRegenTickInterval, /*bLoop=*/true);
-	}
-}
-
-bool UFWHealManaActorComponent::ConsumeMana(float Amount)
-{
-    if (Amount < 0.f) return false;
-    if (CurrentMana < Amount) return false;    // 마나 부족
-
-    CurrentMana -= Amount;
-    OnManaChanged.Broadcast(this, CurrentMana, MaxMana, -Amount);
-    if (UFWNetworkSubsystem* Net = GetLocalPlayerNetwork())
-    {
-        Net->SendUpdateMana(CurrentMana);
-    }
-    return true;
-}
-
-void UFWHealManaActorComponent::RegenerateMana(float Amount)
-{
-    if (Amount <= 0.f || !IsAlive()) return;
-    if (CurrentMana >= MaxMana) return;
-
-    const float OldMana = CurrentMana;
-    CurrentMana = FMath::Clamp(CurrentMana + Amount, 0.f, MaxMana);
-    const float Delta = CurrentMana - OldMana;
-
-    if (Delta > 0.f)
-    {
-        OnManaChanged.Broadcast(this, CurrentMana, MaxMana, Delta);
-        if (UFWNetworkSubsystem* Net = GetLocalPlayerNetwork())
-        {
-            Net->SendUpdateMana(CurrentMana);
-        }
-    }
+	GetWorld()->GetTimerManager().SetTimer(
+		OfflineManaRegenTimer, this, &UFWHealManaActorComponent::TickOfflineManaRegen, 1.f, /*bLoop=*/true);
 }
 
 void UFWHealManaActorComponent::ApplyDamage(float Amount)
@@ -104,9 +67,44 @@ void UFWHealManaActorComponent::Heal(float Amount)
     }
 }
 
-void UFWHealManaActorComponent::TickManaRegen()
+void UFWHealManaActorComponent::ApplyServerMana(float NewCurrent, float NewMax)
 {
-    RegenerateMana(ManaRegenPerSecond * ManaRegenTickInterval);
+    const float Delta = NewCurrent - CurrentMana;
+    if (Delta == 0.f && NewMax == MaxMana) return;
+
+    CurrentMana = NewCurrent;
+    MaxMana = NewMax;
+    OnManaChanged.Broadcast(this, CurrentMana, MaxMana, Delta);
+}
+
+// Offline fallback below mirrors the server's rules in Session.cpp (C2S_SKILL / regen_mana) - keep them identical.
+bool UFWHealManaActorComponent::TryConsumeManaOffline(float Amount)
+{
+    if (CurrentMana < Amount) return false;
+
+    CurrentMana -= Amount;
+    OnManaChanged.Broadcast(this, CurrentMana, MaxMana, -Amount);
+    return true;
+}
+
+void UFWHealManaActorComponent::TickOfflineManaRegen()
+{
+    if (!UsesOfflineFallback() || CurrentMana >= MaxMana) return;
+
+    const float OldMana = CurrentMana;
+    CurrentMana = FMath::Min(CurrentMana + FWNet::MANA_REGEN_PER_SECOND, MaxMana);
+    OnManaChanged.Broadcast(this, CurrentMana, MaxMana, CurrentMana - OldMana);
+}
+
+bool UFWHealManaActorComponent::UsesOfflineFallback() const
+{
+    const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+    if (!OwnerPawn || !OwnerPawn->IsLocallyControlled())
+    {
+        return false;
+    }
+    const UFWNetworkSubsystem* Net = GetLocalPlayerNetwork();
+    return !Net || !Net->IsServerAuthoritative();
 }
 
 UFWNetworkSubsystem* UFWHealManaActorComponent::GetLocalPlayerNetwork() const

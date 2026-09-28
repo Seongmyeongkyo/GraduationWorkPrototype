@@ -77,6 +77,11 @@ bool UFWNetworkSubsystem::IsConnected() const
 	return Socket && Socket->GetConnectionState() == SCS_Connected;
 }
 
+bool UFWNetworkSubsystem::IsServerAuthoritative() const
+{
+	return IsConnected();
+}
+
 void UFWNetworkSubsystem::SendBytes(const void* Data, int32 NumBytes)
 {
 	if (!IsConnected())
@@ -178,15 +183,6 @@ void UFWNetworkSubsystem::SendUpdateHealth(float CurrentHealth)
 	Packet.size = sizeof(C2S_UpdateHealth);
 	Packet.type = C2S_UPDATE_HEALTH;
 	Packet.currentHealth = CurrentHealth;
-	SendBytes(&Packet, Packet.size);
-}
-
-void UFWNetworkSubsystem::SendUpdateMana(float CurrentMana)
-{
-	C2S_UpdateMana Packet{};
-	Packet.size = sizeof(C2S_UpdateMana);
-	Packet.type = C2S_UPDATE_MANA;
-	Packet.currentMana = CurrentMana;
 	SendBytes(&Packet, Packet.size);
 }
 
@@ -320,6 +316,18 @@ void UFWNetworkSubsystem::ProcessPacket(const uint8* Packet)
 	{
 		const auto* P = reinterpret_cast<const S2C_ItemResult*>(Packet);
 		OnItemResult.Broadcast(P->itemId);
+		break;
+	}
+	case S2C_MANA_UPDATE:
+	{
+		const auto* P = reinterpret_cast<const S2C_ManaUpdate*>(Packet);
+		OnManaUpdate.Broadcast(P->currentMana, P->maxMana);
+		break;
+	}
+	case S2C_SKILL_FAIL:
+	{
+		const auto* P = reinterpret_cast<const S2C_SkillFail*>(Packet);
+		OnSkillFailed.Broadcast(P->skillIndex);
 		break;
 	}
 	default:

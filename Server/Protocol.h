@@ -9,6 +9,12 @@ constexpr int MAX_NAME_LEN = 20;
 // 스킬 개수. 스킬마다 패킷 타입을 따로 두지 않고 skillIndex(0 ~ SKILL_COUNT-1)로 구분한다.
 constexpr int SKILL_COUNT = 3;
 
+// 게임 수치 규칙. 서버에 접속하지 않았을 때 클라이언트도 같은 규칙으로 직접 처리하므로
+// 값을 바꿀 때는 클라이언트 NetworkProtocol.h도 함께 수정할 것.
+constexpr float MAX_MANA = 100.f;
+constexpr float SKILL_MANA_COST = 20.f;
+constexpr float MANA_REGEN_PER_SECOND = 5.f;
+
 // uint8_t/int32_t는 언리얼의 uint8/int32와 크기가 같다.
 enum PACKET_TYPE : uint8_t {
     C2S_LOGIN = 0, C2S_MOVE,
@@ -18,8 +24,11 @@ enum PACKET_TYPE : uint8_t {
     C2S_ATTACK, C2S_SKILL, C2S_HIT, C2S_GET_EXP, C2S_GET_ITEM,
     S2C_PLAYER_ATTACK, S2C_PLAYER_SKILL, S2C_PLAYER_HIT, S2C_EXP_RESULT, S2C_ITEM_RESULT,
 
-    // 체력/마나 보고 (임시 구조)
-    C2S_UPDATE_HEALTH, C2S_UPDATE_MANA
+    // 체력 보고 (임시 구조)
+    C2S_UPDATE_HEALTH,
+
+    // 마나 (서버가 관리)
+    S2C_MANA_UPDATE, S2C_SKILL_FAIL
 };
 
 #pragma pack(push, 1) // 패딩 제거 (클라이언트와 바이트 배치 일치)
@@ -72,7 +81,7 @@ struct S2C_MovePlayer {
 };
 
 // ---- 전투 / 성장 ----
-// 전부 클라이언트 신뢰 모델: 클라이언트가 판단한 값을 서버는 검증 없이 중계/저장한다.
+// 스킬의 마나만 서버가 확인/차감하고, 나머지는 클라이언트가 판단한 값을 서버가 검증 없이 중계/저장한다.
 
 // 기본 공격 방향. 서버는 판정하지 않고 다른 클라이언트의 애니메이션/이펙트용으로 중계만 한다.
 struct C2S_Attack {
@@ -81,6 +90,8 @@ struct C2S_Attack {
     float dirX, dirY;
 };
 
+// 스킬 사용 요청. 서버가 마나를 확인해서 충분하면 차감 후 S2C_PlayerSkill을 전원에게,
+// 부족하면 S2C_SkillFail을 요청한 본인에게 보낸다.
 struct C2S_Skill {
     uint8_t size;
     PACKET_TYPE type;
@@ -147,19 +158,29 @@ struct S2C_ItemResult {
     int32_t itemId;
 };
 
-// ---- 체력 / 마나 ----
-// 클라이언트가 계산한 현재 값을 보고만 한다. 서버는 세션(m_hp/m_mp)에 저장만 하고 응답하지 않는다.
-
+// ---- 체력 ----
+// 클라이언트가 계산한 현재 값을 보고만 한다. 서버는 세션(m_hp)에 저장만 하고 응답하지 않는다.
 struct C2S_UpdateHealth {
     uint8_t size;
     PACKET_TYPE type;
     float currentHealth;
 };
 
-struct C2S_UpdateMana {
+// ---- 마나 (서버가 관리) ----
+
+// 현재/최대 마나. 로그인 직후, 스킬 사용 후, 회복될 때마다 본인에게만 전송.
+struct S2C_ManaUpdate {
     uint8_t size;
     PACKET_TYPE type;
     float currentMana;
+    float maxMana;
+};
+
+// 스킬 사용 실패 (현재 사유는 마나 부족뿐). 요청한 본인에게만 전송.
+struct S2C_SkillFail {
+    uint8_t size;
+    PACKET_TYPE type;
+    uint8_t skillIndex;
 };
 #pragma pack(pop)
 
@@ -176,7 +197,6 @@ constexpr int ExpectedC2SPacketSize(uint8_t type) {
     case C2S_GET_EXP:       return sizeof(C2S_GetExp);
     case C2S_GET_ITEM:      return sizeof(C2S_GetItem);
     case C2S_UPDATE_HEALTH: return sizeof(C2S_UpdateHealth);
-    case C2S_UPDATE_MANA:   return sizeof(C2S_UpdateMana);
     default:                return 0;
     }
 }
