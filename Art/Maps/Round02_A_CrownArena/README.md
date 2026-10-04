@@ -27,8 +27,26 @@ GO는 아직 공간 표시에 불과하며 상점·출전·대기 시간·라운
 - 이미지: `Previews/Overview.png`, `TopDown.png`, `Shop.png`, `ArenaDetail.png`
 - 배치·치수·기준점·FBX 원점: `Layout.json`
 
-Blender에서는 개별 메시와 컬렉션을 편집할 수 있다. 숫자패드 7은 탑뷰,
-0은 전체 카메라 뷰다. Material Preview로 색상을 확인한다.
+Blender에서는 개별 메시와 컬렉션을 편집할 수 있다. 저장된 시작 뷰와 `Camera_Top`은
++X가 위쪽인 탑뷰다. 숫자패드 7은 Blender 기본 방향으로 돌아가므로 이 방위와 다르다.
+Material Preview로 색상을 확인한다.
+
+## 공통 축 방향
+
+사용자가 제공한 화면의 배치를 유지하며 Unreal **+X=북쪽/위, +Y=동쪽/오른쪽**으로 정렬했다.
+Blender는 **+X=북쪽/위, -Y=동쪽/오른쪽**이며 m 단위다. UE는 cm 단위다.
+메시·게이트 피벗·배치 기준점·카메라와 Layout.json을 함께 회전했다.
+좌측 A팀 대기실은 UE `(0,-3000,0)`, 우측 B팀은 `(0,3000,0)`에 있다.
+
+Unreal Outliner에서 `Round02_NorthTopCamera`를 우클릭 → Pilot하면 이 방향의 탑뷰를 본다.
+`Round02_OverviewCamera`는 두 대기실이 함께 보이는 정면 사선 시점이다.
+이미 열려 있던 에디터에서는 레벨을 다시 불러와야 저장된 수정이 반영된다.
+
+축 변경 시 기존 PlayerStart와 NavMeshBoundsVolume, RecastNavMesh를 보존했다.
+PlayerStart와 범위 볼륨은 환경과 함께 회전하며, 기존 NavMesh는 수정된 환경에서 다시 빌드했다. 변경 전 파일은
+`Saved/Round02_BeforeNorthAxis/Round02_A_CrownArena/`에 보관했다.
+축·치수·상점 표시 검사 결과는 `NorthAxis_Blender_Verification.json`,
+`NorthAxis_Unreal_Verification.json`에 기록한다.
 
 ## 수정 단위와 기능 범위
 
@@ -59,3 +77,7 @@ Blender에서는 개별 메시와 컬렉션을 편집할 수 있다. 숫자패�
 수동 편집한 Blender 원본은 다른 이름으로 보관한다. Unreal 임포터의 기본 실행은
 이미 생성된 레벨을 보존하고 재검증한다. `-Round02RefreshAssets`는 생성 에셋만
 명시적으로 다시 임포트하므로 수동 수정된 메시·재질이 있다면 먼저 보관해야 한다.
+
+## 로컬 작업 보조 파일
+
+이 문서에서 언급하는 제작·임포트·검증용 Python 스크립트와 자동 검증 리포트는 로컬 작업 보조 파일로, Git 커밋에서 제외한다. 맵·모델·텍스처·미리보기와 배치 JSON은 저장소에 포함한다.

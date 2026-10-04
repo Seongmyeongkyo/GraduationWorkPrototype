@@ -43,7 +43,8 @@
 - 이미지: `Previews/Overview.png`, `TopDown.png`, `Shop.png`, `ArenaDetail.png`
 - 배치·치수·문 연결 관계·기준점: `Layout.json`
 
-Blender 숫자패드 7은 탑뷰, 0은 전체 카메라 뷰다. 개별 오브젝트와 컬렉션은 편집 가능하다.
+Blender의 저장된 시작 뷰와 `Camera_Top`은 +X가 위쪽인 탑뷰다.
+숫자패드 7은 Blender 기본 방향으로 돌아간다. 개별 오브젝트와 컬렉션은 편집 가능하다.
 Unreal에서는 `Round02/Geometry/replaceable_corridor` 폴더에 통로 3개,
 `Round02/Geometry/transfer_gate` 폴더에 문 6개를 배치했다.
 `Round02/Layout`의 TargetPoint에 전장·팀·선택 목적지 등의 태그를 기록했다.
@@ -51,6 +52,35 @@ Unreal에서는 `Round02/Geometry/replaceable_corridor` 폴더에 통로 3개,
 바닥·벽·엄폐물·상점 소품·문은 충돌하고 장식과 글자는 충돌하지 않는다.
 충돌은 검토용 complex-as-simple 방식이다. PlayerStart, 실제 팀 스폰, 상점,
 전장 선택, 카운트다운, 승패, 자기장, 문 제어와 합류 권한 처리는 추후 구현한다.
+
+## 축 방향·팀 상점·다리 치수
+
+화면 위쪽의 1번 전장을 북쪽으로 삼아 Unreal **+X=위, +Y=오른쪽**으로 정렬했다.
+Blender는 **+X=위, -Y=오른쪽**이고 m 단위다. UE는 cm 단위다.
+메시·독립 게이트 피벗·배치 기준점·카메라와 Layout.json에 같은 변환을 적용했다.
+
+| 구역 | Unreal 중심 좌표 (cm) |
+| --- | --- |
+| 1번 전장 / 위 | `(2424.87, 0, 0)` |
+| 2번 전장 / 좌하단 | `(-1212.44, -2100, 0)` |
+| 3번 전장 / 우하단 | `(-1212.44, 2100, 0)` |
+| A팀 상점·대기 / 좌측 | `(2400, -4300, 0)` |
+| B팀 상점·대기 / 우측 | `(2400, 4300, 0)` |
+
+양 팀 구역은 각각 지름 12m의 원형 공간이며, 상점 모형·대기 위치 3개·전장 선택 발판 3개를 갖춘다.
+두 상점은 기존 원본에도 있었으며, 이번에 실제 메시·표시 상태와 좌우 대칭을 확인하고
+두 구역이 모두 들어오는 정면 사선 카메라로 정리했다.
+
+다리 3개는 **바닥 메시 길이 19m, 폭 5m**로 동일하다. 전장 원 경계 사이 빈 거리는 18m이고,
+양 끝이 각 전장에 0.5m씩 겹쳐 바닥 틈을 막는다. 전장 중심 간 거리는 세 변 모두 42m다.
+회전된 메시의 축 정렬 바운딩 박스 길이는 서로 다르므로, 각 다리 진행 방향으로 실제
+바닥 버텍스를 투영해 길이·폭을 검사한다.
+
+Unreal Outliner의 `Round02_NorthTopCamera`를 우클릭 → Pilot하면 +X 위쪽 탑뷰를 볼 수 있다.
+`Round02_OverviewCamera`는 양 팀 상점을 모두 보여주는 사선 시점이다.
+이미 열려 있던 에디터는 레벨을 다시 불러온다.
+실측·대칭·카메라 방향 검사 결과는 `NorthAxis_Blender_Verification.json`,
+`NorthAxis_Unreal_Verification.json`에 기록한다.
 
 ## 검사와 재생성
 
@@ -67,3 +97,7 @@ Unreal에서는 `Round02/Geometry/replaceable_corridor` 폴더에 통로 3개,
 저장된 Blender 파일의 미리보기만 다시 만든다. 수동 편집본은 다른 이름으로 보관한다.
 UE 임포터 `Scripts/CreateRound02Concepts.py`의 기본 실행은 완성된 레벨을 보존한다.
 `-Round02RefreshAssets`는 메시·재질만 다시 임포트하는 명시적 옵션이다.
+
+## 로컬 작업 보조 파일
+
+이 문서에서 언급하는 제작·임포트·검증용 Python 스크립트와 자동 검증 리포트는 로컬 작업 보조 파일로, Git 커밋에서 제외한다. 맵·모델·텍스처·미리보기와 배치 JSON은 저장소에 포함한다.

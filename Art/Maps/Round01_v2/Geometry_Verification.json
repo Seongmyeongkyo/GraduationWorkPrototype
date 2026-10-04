@@ -1,5 +1,0 @@
-{
-  "rays": 1087,
-  "wall_ray_errors": [],
-  "tested": "actual wall meshes: camps/spawns/arena centers and inner edges; every path centerline at <=1m spacing"
-}

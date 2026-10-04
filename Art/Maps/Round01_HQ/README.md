@@ -73,3 +73,7 @@ Unreal용 `Scripts/UpgradeRound01Art.py`는 PythonScriptPlugin, EditorScriptingU
 ProceduralMeshComponent를 실행 시 활성화해 사용한다. 영구 플러그인 설정 변경은 없다.
 이미 적용한 시안의 축을 반복해서 회전하지 않는다. `-Round01HQRefresh`는 HQ 리소스만
 갱신하며 기존 액터 배치를 유지한다. 레벨 배치까지 새로 만들려면 별도 이름을 사용한다.
+
+## 로컬 작업 보조 파일
+
+이 문서에서 언급하는 제작·임포트·검증용 Python 스크립트와 자동 검증 리포트는 로컬 작업 보조 파일로, Git 커밋에서 제외한다. 맵·모델·텍스처·미리보기와 배치 JSON은 저장소에 포함한다.
