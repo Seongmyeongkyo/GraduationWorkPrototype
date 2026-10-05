@@ -1,0 +1,850 @@
+{
+  "title": "Round02_A_CrownArena",
+  "variant": "A",
+  "version": "0.1",
+  "units": "meters",
+  "coordinate_convention": "Blender +X north/up, -Y east/right, Z up; Unreal X=x*100, Y=-y*100, Z=z*100: +X north/up, +Y east/right.",
+  "art_style": "low-poly spatial prototype",
+  "gameplay_implemented": false,
+  "arenas": [
+    {
+      "name": "Arena_1",
+      "center_m": [
+        0,
+        0
+      ],
+      "radius_m": 20,
+      "duel_spawn_separation_m": 26,
+      "rotation_degrees": -90.0
+    }
+  ],
+  "lobbies": [
+    {
+      "team": "A",
+      "center_m": [
+        0,
+        30
+      ],
+      "radius_m": 6,
+      "physical_connection": true
+    },
+    {
+      "team": "B",
+      "center_m": [
+        0,
+        -30
+      ],
+      "radius_m": 6,
+      "physical_connection": true
+    }
+  ],
+  "corridors": [],
+  "gates": [
+    {
+      "name": "ArenaEntry_A",
+      "position_m": [
+        0,
+        19.76,
+        0
+      ],
+      "angle_degrees": 90.0,
+      "width_m": 6.2,
+      "arena": "Arena_1",
+      "asset": "SM_R02A_ArenaEntry_A",
+      "initial_state": "closed_static_placeholder",
+      "role": "arena_entry_gate"
+    },
+    {
+      "name": "ArenaEntry_B",
+      "position_m": [
+        0,
+        -19.76,
+        0
+      ],
+      "angle_degrees": -90.0,
+      "width_m": 6.2,
+      "arena": "Arena_1",
+      "asset": "SM_R02A_ArenaEntry_B",
+      "initial_state": "closed_static_placeholder",
+      "role": "arena_entry_gate"
+    }
+  ],
+  "markers": [
+    {
+      "name": "Arena_1_DuelSpawn_A",
+      "position_m": [
+        0.0,
+        13.0,
+        1
+      ],
+      "kind": "duel_spawn",
+      "radius_m": 0.65,
+      "team": "A",
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_1_TeamSpawn_A1",
+      "position_m": [
+        -3.0,
+        13.0,
+        1
+      ],
+      "kind": "team_combat_spawn",
+      "radius_m": 0.65,
+      "team": "A",
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_1_TeamSpawn_A2",
+      "position_m": [
+        0.0,
+        13.0,
+        1
+      ],
+      "kind": "team_combat_spawn",
+      "radius_m": 0.65,
+      "team": "A",
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_1_TeamSpawn_A3",
+      "position_m": [
+        3.0,
+        13.0,
+        1
+      ],
+      "kind": "team_combat_spawn",
+      "radius_m": 0.65,
+      "team": "A",
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_1_DuelSpawn_B",
+      "position_m": [
+        0.0,
+        -13.0,
+        1
+      ],
+      "kind": "duel_spawn",
+      "radius_m": 0.65,
+      "team": "B",
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_1_TeamSpawn_B1",
+      "position_m": [
+        -3.0,
+        -13.0,
+        1
+      ],
+      "kind": "team_combat_spawn",
+      "radius_m": 0.65,
+      "team": "B",
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_1_TeamSpawn_B2",
+      "position_m": [
+        0.0,
+        -13.0,
+        1
+      ],
+      "kind": "team_combat_spawn",
+      "radius_m": 0.65,
+      "team": "B",
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_1_TeamSpawn_B3",
+      "position_m": [
+        3.0,
+        -13.0,
+        1
+      ],
+      "kind": "team_combat_spawn",
+      "radius_m": 0.65,
+      "team": "B",
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_1_Center",
+      "position_m": [
+        0,
+        0,
+        0.1
+      ],
+      "kind": "arena",
+      "radius_m": 20,
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Shop_A",
+      "position_m": [
+        1.8000000000000003,
+        30,
+        0.1
+      ],
+      "kind": "shop_interaction",
+      "radius_m": 1,
+      "team": "A"
+    },
+    {
+      "name": "Lobby_A",
+      "position_m": [
+        0,
+        30,
+        0.1
+      ],
+      "kind": "team_lobby",
+      "radius_m": 6,
+      "team": "A"
+    },
+    {
+      "name": "Lobby_A_Player1",
+      "position_m": [
+        -1.1,
+        31.5,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "A"
+    },
+    {
+      "name": "Lobby_A_Player2",
+      "position_m": [
+        -1.1,
+        30,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "A"
+    },
+    {
+      "name": "Lobby_A_Player3",
+      "position_m": [
+        -1.1,
+        28.5,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "A"
+    },
+    {
+      "name": "Select_A_Arena1",
+      "position_m": [
+        -3.1,
+        30,
+        0.1
+      ],
+      "kind": "arena_selection",
+      "radius_m": 1.0,
+      "team": "A",
+      "target_arena": "Arena_1"
+    },
+    {
+      "name": "ArenaEntry_A_LogicAnchor",
+      "position_m": [
+        0,
+        19.76,
+        0.1
+      ],
+      "kind": "arena_entry_gate",
+      "radius_m": 3.1,
+      "arena": "Arena_1",
+      "rotation_degrees": 90.0,
+      "gate_asset": "SM_R02A_ArenaEntry_A"
+    },
+    {
+      "name": "Shop_B",
+      "position_m": [
+        1.8000000000000003,
+        -30,
+        0.1
+      ],
+      "kind": "shop_interaction",
+      "radius_m": 1,
+      "team": "B"
+    },
+    {
+      "name": "Lobby_B",
+      "position_m": [
+        0,
+        -30,
+        0.1
+      ],
+      "kind": "team_lobby",
+      "radius_m": 6,
+      "team": "B"
+    },
+    {
+      "name": "Lobby_B_Player1",
+      "position_m": [
+        -1.1,
+        -28.5,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "B"
+    },
+    {
+      "name": "Lobby_B_Player2",
+      "position_m": [
+        -1.1,
+        -30,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "B"
+    },
+    {
+      "name": "Lobby_B_Player3",
+      "position_m": [
+        -1.1,
+        -31.5,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "B"
+    },
+    {
+      "name": "Select_B_Arena1",
+      "position_m": [
+        -3.1,
+        -30,
+        0.1
+      ],
+      "kind": "arena_selection",
+      "radius_m": 1.0,
+      "team": "B",
+      "target_arena": "Arena_1"
+    },
+    {
+      "name": "ArenaEntry_B_LogicAnchor",
+      "position_m": [
+        0,
+        -19.76,
+        0.1
+      ],
+      "kind": "arena_entry_gate",
+      "radius_m": 3.1,
+      "arena": "Arena_1",
+      "rotation_degrees": -90.0,
+      "gate_asset": "SM_R02A_ArenaEntry_B"
+    }
+  ],
+  "materials": {
+    "M_R02A_Sand": {
+      "rgb": [
+        0.47999998927116394,
+        0.4000000059604645,
+        0.2800000011920929
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_SandLight": {
+      "rgb": [
+        0.550000011920929,
+        0.4699999988079071,
+        0.33000001311302185
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_Basalt": {
+      "rgb": [
+        0.11999999731779099,
+        0.1899999976158142,
+        0.20000000298023224
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_Stone": {
+      "rgb": [
+        0.25999999046325684,
+        0.3400000035762787,
+        0.3400000035762787
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_CutStone": {
+      "rgb": [
+        0.49000000953674316,
+        0.550000011920929,
+        0.5
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_Gold": {
+      "rgb": [
+        0.7200000286102295,
+        0.47999998927116394,
+        0.1599999964237213
+      ],
+      "roughness": 0.5,
+      "emission": 0.0
+    },
+    "M_R02A_Grass": {
+      "rgb": [
+        0.1599999964237213,
+        0.27000001072883606,
+        0.1899999976158142
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_Leaf": {
+      "rgb": [
+        0.12999999523162842,
+        0.30000001192092896,
+        0.2199999988079071
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_Wood": {
+      "rgb": [
+        0.2800000011920929,
+        0.17000000178813934,
+        0.09000000357627869
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_Canvas": {
+      "rgb": [
+        0.75,
+        0.6700000166893005,
+        0.47999998927116394
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_TeamA": {
+      "rgb": [
+        0.05000000074505806,
+        0.4300000071525574,
+        0.699999988079071
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_TeamB": {
+      "rgb": [
+        0.75,
+        0.20000000298023224,
+        0.14000000059604645
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_GateRed": {
+      "rgb": [
+        0.949999988079071,
+        0.11999999731779099,
+        0.05999999865889549
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.5
+    },
+    "M_R02A_Arena1": {
+      "rgb": [
+        0.7400000095367432,
+        0.5099999904632568,
+        0.1899999976158142
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.10000000149011612
+    },
+    "M_R02A_Arena2": {
+      "rgb": [
+        0.12999999523162842,
+        0.5600000023841858,
+        0.49000000953674316
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.10000000149011612
+    },
+    "M_R02A_Arena3": {
+      "rgb": [
+        0.5199999809265137,
+        0.30000001192092896,
+        0.6399999856948853
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.10000000149011612
+    },
+    "M_R02A_Ink": {
+      "rgb": [
+        0.07999999821186066,
+        0.12999999523162842,
+        0.14000000059604645
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02A_Fire": {
+      "rgb": [
+        1.0,
+        0.4000000059604645,
+        0.03999999910593033
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 2.0
+    }
+  },
+  "exports": [
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "arena_floors",
+      "asset": "SM_R02A_Arena_Floors",
+      "file": "SM_R02A_Arena_Floors.fbx",
+      "local_min_m": [
+        -20.450000762939453,
+        -20.450000762939453,
+        -2.700000047683716
+      ],
+      "local_max_m": [
+        20.450000762939453,
+        20.450000762939453,
+        0.0
+      ],
+      "triangles": 760
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "arena_walls",
+      "asset": "SM_R02A_Arena_Walls",
+      "file": "SM_R02A_Arena_Walls.fbx",
+      "local_min_m": [
+        -20.73033332824707,
+        -20.285255432128906,
+        0.0
+      ],
+      "local_max_m": [
+        20.73033332824707,
+        20.285255432128906,
+        3.200000047683716
+      ],
+      "triangles": 1248
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "optional_cover",
+      "asset": "SM_R02A_Optional_Cover",
+      "file": "SM_R02A_Optional_Cover.fbx",
+      "local_min_m": [
+        -15.75,
+        -1.9000006914138794,
+        0.0
+      ],
+      "local_max_m": [
+        15.75,
+        1.9000006914138794,
+        2.260000228881836
+      ],
+      "triangles": 48
+    },
+    {
+      "collision": false,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "inlays_and_decoration",
+      "asset": "SM_R02A_Inlays_and_Decoration",
+      "file": "SM_R02A_Inlays_and_Decoration.fbx",
+      "local_min_m": [
+        -40.14765548706055,
+        -40.220001220703125,
+        0.0
+      ],
+      "local_max_m": [
+        40.14765548706055,
+        40.220001220703125,
+        5.0
+      ],
+      "triangles": 8752
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "shop_props",
+      "asset": "SM_R02A_Shop_Props",
+      "file": "SM_R02A_Shop_Props.fbx",
+      "local_min_m": [
+        2.5000195503234863,
+        -31.950000762939453,
+        0.0
+      ],
+      "local_max_m": [
+        4.499980926513672,
+        31.950000762939453,
+        3.299999713897705
+      ],
+      "triangles": 256
+    },
+    {
+      "collision": false,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "layout_labels",
+      "asset": "SM_R02A_Layout_Labels",
+      "file": "SM_R02A_Layout_Labels.fbx",
+      "local_min_m": [
+        -3.3224809169769287,
+        -31.089725494384766,
+        0.05900000035762787
+      ],
+      "local_max_m": [
+        5.449649810791016,
+        31.12547492980957,
+        0.06699999421834946
+      ],
+      "triangles": 5896
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "outer_precinct",
+      "asset": "SM_R02A_Outer_Precinct",
+      "file": "SM_R02A_Outer_Precinct.fbx",
+      "local_min_m": [
+        -40.45000076293945,
+        -40.45000076293945,
+        -2.7800002098083496
+      ],
+      "local_max_m": [
+        40.45000076293945,
+        40.45000076293945,
+        2.1999998092651367
+      ],
+      "triangles": 2092
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        30,
+        0
+      ],
+      "role": "team_lobby_geometry",
+      "asset": "SM_R02A_TeamA_Lobby",
+      "file": "SM_R02A_TeamA_Lobby.fbx",
+      "local_min_m": [
+        -6.7303314208984375,
+        -6.449999809265137,
+        -2.700000047683716
+      ],
+      "local_max_m": [
+        6.730335235595703,
+        6.799998760223389,
+        1.8499999046325684
+      ],
+      "triangles": 1920
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0.0,
+        22.049999237060547,
+        0
+      ],
+      "role": "replaceable_corridor",
+      "asset": "SM_R02A_Entry_A",
+      "file": "SM_R02A_Entry_A.fbx",
+      "local_min_m": [
+        -2.5699992179870605,
+        -2.3499996662139893,
+        -1.4200000762939453
+      ],
+      "local_max_m": [
+        2.5700011253356934,
+        2.3499996662139893,
+        1.6099998950958252
+      ],
+      "triangles": 96
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        19.76,
+        0
+      ],
+      "role": "arena_entry_gate",
+      "asset": "SM_R02A_ArenaEntry_A",
+      "file": "SM_R02A_ArenaEntry_A.fbx",
+      "local_min_m": [
+        -3.2099990844726562,
+        -0.16000023484230042,
+        0.0
+      ],
+      "local_max_m": [
+        3.21000075340271,
+        0.16000023484230042,
+        2.799999952316284
+      ],
+      "triangles": 168
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        -30,
+        0
+      ],
+      "role": "team_lobby_geometry",
+      "asset": "SM_R02A_TeamB_Lobby",
+      "file": "SM_R02A_TeamB_Lobby.fbx",
+      "local_min_m": [
+        -6.730335235595703,
+        -6.799998760223389,
+        -2.700000047683716
+      ],
+      "local_max_m": [
+        6.7303314208984375,
+        6.449999809265137,
+        1.8499999046325684
+      ],
+      "triangles": 1924
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0.0,
+        -22.049999237060547,
+        0
+      ],
+      "role": "replaceable_corridor",
+      "asset": "SM_R02A_Entry_B",
+      "file": "SM_R02A_Entry_B.fbx",
+      "local_min_m": [
+        -2.5700011253356934,
+        -2.3499996662139893,
+        -1.4200000762939453
+      ],
+      "local_max_m": [
+        2.5699992179870605,
+        2.3499996662139893,
+        1.6099998950958252
+      ],
+      "triangles": 96
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        -19.76,
+        0
+      ],
+      "role": "arena_entry_gate",
+      "asset": "SM_R02A_ArenaEntry_B",
+      "file": "SM_R02A_ArenaEntry_B.fbx",
+      "local_min_m": [
+        -3.21000075340271,
+        -0.16000023484230042,
+        0.0
+      ],
+      "local_max_m": [
+        3.2099990844726562,
+        0.16000023484230042,
+        2.799999952316284
+      ],
+      "triangles": 168
+    }
+  ],
+  "validation": {
+    "geometry_samples": 101,
+    "floor_and_clearance_errors": [],
+    "gate_blocking_rays_passed": [
+      "ArenaEntry_A",
+      "ArenaEntry_B"
+    ],
+    "gates_excluded_from_open_route_check": true,
+    "corridor_width_tested_m": 3.6,
+    "method": "Actual Blender mesh rays; not UE navigation or gameplay testing",
+    "marker_counts": {
+      "duel_spawn": 2,
+      "team_combat_spawn": 6,
+      "arena": 1,
+      "shop_interaction": 2,
+      "team_lobby": 2,
+      "lobby_spawn": 6,
+      "arena_selection": 2,
+      "arena_entry_gate": 2
+    },
+    "mirrored_duel_gate_access": [
+      {
+        "arena": "Arena_1",
+        "team_A_gate_distances_m": [
+          6.760000000000002,
+          32.760000000000005
+        ],
+        "team_B_gate_distances_m": [
+          6.760000000000002,
+          32.760000000000005
+        ]
+      }
+    ]
+  },
+  "ue_map": "/Game/Map/L_Round02_A_CrownArena",
+  "ue_assets": "/Game/Environment/Round02_A_CrownArena",
+  "camera": {
+    "location_m": [
+      -115.0,
+      0.0,
+      140.0
+    ],
+    "target_m": [
+      0,
+      0,
+      0
+    ],
+    "ortho_width_m": 97
+  },
+  "design_notes": [
+    "Shop, selection, spawning, victory, admission and storm logic are deferred.",
+    "Gate meshes are closed static placeholders with independent center pivots.",
+    "For concept B a winner must be admitted at the destination even while its duel continues.",
+    "Concept A supports round 2 succession duels and possible round 3 team combat.",
+    "Concept B lobbies are separate islands: selection/transfer will be game logic."
+  ],
+  "coordinate_frame": "X_NORTH_Y_WEST"
+}

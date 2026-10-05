@@ -1,0 +1,1171 @@
+{
+  "title": "Round02_B_TriadArena",
+  "variant": "B",
+  "version": "0.1",
+  "units": "meters",
+  "coordinate_convention": "Blender +X north/up, -Y east/right, Z up; Unreal X=x*100, Y=-y*100, Z=z*100: +X north/up, +Y east/right.",
+  "art_style": "low-poly spatial prototype",
+  "gameplay_implemented": false,
+  "arenas": [
+    {
+      "name": "Arena_1",
+      "center_m": [
+        24.24871130596428,
+        0
+      ],
+      "radius_m": 12,
+      "duel_spawn_separation_m": 15.0,
+      "rotation_degrees": -90.0
+    },
+    {
+      "name": "Arena_2",
+      "center_m": [
+        -12.12435565298214,
+        21
+      ],
+      "radius_m": 12,
+      "duel_spawn_separation_m": 15.0,
+      "rotation_degrees": 29.999999999999986
+    },
+    {
+      "name": "Arena_3",
+      "center_m": [
+        -12.12435565298214,
+        -21
+      ],
+      "radius_m": 12,
+      "duel_spawn_separation_m": 15.0,
+      "rotation_degrees": 149.99999999999997
+    }
+  ],
+  "lobbies": [
+    {
+      "team": "A",
+      "center_m": [
+        24,
+        43
+      ],
+      "radius_m": 6,
+      "physical_connection": false
+    },
+    {
+      "team": "B",
+      "center_m": [
+        24,
+        -43
+      ],
+      "radius_m": 6,
+      "physical_connection": false
+    }
+  ],
+  "corridors": [
+    {
+      "name": "Corridor_1_2",
+      "arenas": [
+        1,
+        2
+      ],
+      "deck_length_m": 19.0,
+      "edge_to_edge_m": 18,
+      "clear_width_m": 5,
+      "replaceable": true
+    },
+    {
+      "name": "Corridor_1_3",
+      "arenas": [
+        1,
+        3
+      ],
+      "deck_length_m": 19.0,
+      "edge_to_edge_m": 18,
+      "clear_width_m": 5,
+      "replaceable": true
+    },
+    {
+      "name": "Corridor_2_3",
+      "arenas": [
+        2,
+        3
+      ],
+      "deck_length_m": 19.0,
+      "edge_to_edge_m": 18,
+      "clear_width_m": 5,
+      "replaceable": true
+    }
+  ],
+  "gates": [
+    {
+      "name": "Gate_1_to_2",
+      "position_m": [
+        14.28941822052002,
+        5.75,
+        0
+      ],
+      "angle_degrees": -210.00000044529205,
+      "width_m": 5.6,
+      "arena": "Arena_1",
+      "asset": "SM_R02B_Gate_1_to_2",
+      "initial_state": "closed_static_placeholder",
+      "role": "transfer_gate"
+    },
+    {
+      "name": "Gate_2_to_1",
+      "position_m": [
+        -2.16506290435791,
+        15.25,
+        0
+      ],
+      "angle_degrees": -30.000000445292052,
+      "width_m": 5.6,
+      "arena": "Arena_2",
+      "asset": "SM_R02B_Gate_2_to_1",
+      "initial_state": "closed_static_placeholder",
+      "role": "transfer_gate"
+    },
+    {
+      "name": "Gate_1_to_3",
+      "position_m": [
+        14.28941822052002,
+        -5.75,
+        0
+      ],
+      "angle_degrees": -149.99999955470795,
+      "width_m": 5.6,
+      "arena": "Arena_1",
+      "asset": "SM_R02B_Gate_1_to_3",
+      "initial_state": "closed_static_placeholder",
+      "role": "transfer_gate"
+    },
+    {
+      "name": "Gate_3_to_1",
+      "position_m": [
+        -2.16506290435791,
+        -15.25,
+        0
+      ],
+      "angle_degrees": 30.000000445292045,
+      "width_m": 5.6,
+      "arena": "Arena_3",
+      "asset": "SM_R02B_Gate_3_to_1",
+      "initial_state": "closed_static_placeholder",
+      "role": "transfer_gate"
+    },
+    {
+      "name": "Gate_2_to_3",
+      "position_m": [
+        -12.12435531616211,
+        9.5,
+        0
+      ],
+      "angle_degrees": -90.0,
+      "width_m": 5.6,
+      "arena": "Arena_2",
+      "asset": "SM_R02B_Gate_2_to_3",
+      "initial_state": "closed_static_placeholder",
+      "role": "transfer_gate"
+    },
+    {
+      "name": "Gate_3_to_2",
+      "position_m": [
+        -12.12435531616211,
+        -9.5,
+        0
+      ],
+      "angle_degrees": 90.0,
+      "width_m": 5.6,
+      "arena": "Arena_3",
+      "asset": "SM_R02B_Gate_3_to_2",
+      "initial_state": "closed_static_placeholder",
+      "role": "transfer_gate"
+    }
+  ],
+  "markers": [
+    {
+      "name": "Arena_1_DuelSpawn_A",
+      "position_m": [
+        24.24871130596428,
+        7.5,
+        1
+      ],
+      "kind": "duel_spawn",
+      "radius_m": 0.65,
+      "team": "A",
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_1_DuelSpawn_B",
+      "position_m": [
+        24.24871130596428,
+        -7.5,
+        1
+      ],
+      "kind": "duel_spawn",
+      "radius_m": 0.65,
+      "team": "B",
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_1_Center",
+      "position_m": [
+        24.24871130596428,
+        0,
+        0.1
+      ],
+      "kind": "arena",
+      "radius_m": 12,
+      "arena": "Arena_1"
+    },
+    {
+      "name": "Arena_2_DuelSpawn_A",
+      "position_m": [
+        -18.61954618136543,
+        17.25,
+        1
+      ],
+      "kind": "duel_spawn",
+      "radius_m": 0.65,
+      "team": "A",
+      "arena": "Arena_2"
+    },
+    {
+      "name": "Arena_2_DuelSpawn_B",
+      "position_m": [
+        -5.629165124598851,
+        24.75,
+        1
+      ],
+      "kind": "duel_spawn",
+      "radius_m": 0.65,
+      "team": "B",
+      "arena": "Arena_2"
+    },
+    {
+      "name": "Arena_2_Center",
+      "position_m": [
+        -12.12435565298214,
+        21,
+        0.1
+      ],
+      "kind": "arena",
+      "radius_m": 12,
+      "arena": "Arena_2"
+    },
+    {
+      "name": "Arena_3_DuelSpawn_A",
+      "position_m": [
+        -5.6291651245988525,
+        -24.750000000000004,
+        1
+      ],
+      "kind": "duel_spawn",
+      "radius_m": 0.65,
+      "team": "A",
+      "arena": "Arena_3"
+    },
+    {
+      "name": "Arena_3_DuelSpawn_B",
+      "position_m": [
+        -18.61954618136543,
+        -17.249999999999996,
+        1
+      ],
+      "kind": "duel_spawn",
+      "radius_m": 0.65,
+      "team": "B",
+      "arena": "Arena_3"
+    },
+    {
+      "name": "Arena_3_Center",
+      "position_m": [
+        -12.12435565298214,
+        -21,
+        0.1
+      ],
+      "kind": "arena",
+      "radius_m": 12,
+      "arena": "Arena_3"
+    },
+    {
+      "name": "Gate_1_to_2_LogicAnchor",
+      "position_m": [
+        14.28941822052002,
+        5.75,
+        0.1
+      ],
+      "kind": "transfer_gate",
+      "radius_m": 2.8,
+      "arena": "Arena_1",
+      "rotation_degrees": -210.00000044529205,
+      "gate_asset": "SM_R02B_Gate_1_to_2"
+    },
+    {
+      "name": "Gate_2_to_1_LogicAnchor",
+      "position_m": [
+        -2.16506290435791,
+        15.25,
+        0.1
+      ],
+      "kind": "transfer_gate",
+      "radius_m": 2.8,
+      "arena": "Arena_2",
+      "rotation_degrees": -30.000000445292052,
+      "gate_asset": "SM_R02B_Gate_2_to_1"
+    },
+    {
+      "name": "Gate_1_to_3_LogicAnchor",
+      "position_m": [
+        14.28941822052002,
+        -5.75,
+        0.1
+      ],
+      "kind": "transfer_gate",
+      "radius_m": 2.8,
+      "arena": "Arena_1",
+      "rotation_degrees": -149.99999955470795,
+      "gate_asset": "SM_R02B_Gate_1_to_3"
+    },
+    {
+      "name": "Gate_3_to_1_LogicAnchor",
+      "position_m": [
+        -2.16506290435791,
+        -15.25,
+        0.1
+      ],
+      "kind": "transfer_gate",
+      "radius_m": 2.8,
+      "arena": "Arena_3",
+      "rotation_degrees": 30.000000445292045,
+      "gate_asset": "SM_R02B_Gate_3_to_1"
+    },
+    {
+      "name": "Gate_2_to_3_LogicAnchor",
+      "position_m": [
+        -12.12435531616211,
+        9.5,
+        0.1
+      ],
+      "kind": "transfer_gate",
+      "radius_m": 2.8,
+      "arena": "Arena_2",
+      "rotation_degrees": -90.0,
+      "gate_asset": "SM_R02B_Gate_2_to_3"
+    },
+    {
+      "name": "Gate_3_to_2_LogicAnchor",
+      "position_m": [
+        -12.12435531616211,
+        -9.5,
+        0.1
+      ],
+      "kind": "transfer_gate",
+      "radius_m": 2.8,
+      "arena": "Arena_3",
+      "rotation_degrees": 90.0,
+      "gate_asset": "SM_R02B_Gate_3_to_2"
+    },
+    {
+      "name": "Shop_A",
+      "position_m": [
+        25.8,
+        43,
+        0.1
+      ],
+      "kind": "shop_interaction",
+      "radius_m": 1,
+      "team": "A"
+    },
+    {
+      "name": "Lobby_A",
+      "position_m": [
+        24,
+        43,
+        0.1
+      ],
+      "kind": "team_lobby",
+      "radius_m": 6,
+      "team": "A"
+    },
+    {
+      "name": "Lobby_A_Player1",
+      "position_m": [
+        22.9,
+        44.5,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "A"
+    },
+    {
+      "name": "Lobby_A_Player2",
+      "position_m": [
+        22.9,
+        43,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "A"
+    },
+    {
+      "name": "Lobby_A_Player3",
+      "position_m": [
+        22.9,
+        41.5,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "A"
+    },
+    {
+      "name": "Select_A_Arena1",
+      "position_m": [
+        20.9,
+        45.45,
+        0.1
+      ],
+      "kind": "arena_selection",
+      "radius_m": 1.0,
+      "team": "A",
+      "target_arena": "Arena_1"
+    },
+    {
+      "name": "Select_A_Arena2",
+      "position_m": [
+        20.9,
+        43.0,
+        0.1
+      ],
+      "kind": "arena_selection",
+      "radius_m": 1.0,
+      "team": "A",
+      "target_arena": "Arena_2"
+    },
+    {
+      "name": "Select_A_Arena3",
+      "position_m": [
+        20.9,
+        40.55,
+        0.1
+      ],
+      "kind": "arena_selection",
+      "radius_m": 1.0,
+      "team": "A",
+      "target_arena": "Arena_3"
+    },
+    {
+      "name": "Shop_B",
+      "position_m": [
+        25.8,
+        -43,
+        0.1
+      ],
+      "kind": "shop_interaction",
+      "radius_m": 1,
+      "team": "B"
+    },
+    {
+      "name": "Lobby_B",
+      "position_m": [
+        24,
+        -43,
+        0.1
+      ],
+      "kind": "team_lobby",
+      "radius_m": 6,
+      "team": "B"
+    },
+    {
+      "name": "Lobby_B_Player1",
+      "position_m": [
+        22.9,
+        -41.5,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "B"
+    },
+    {
+      "name": "Lobby_B_Player2",
+      "position_m": [
+        22.9,
+        -43,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "B"
+    },
+    {
+      "name": "Lobby_B_Player3",
+      "position_m": [
+        22.9,
+        -44.5,
+        1
+      ],
+      "kind": "lobby_spawn",
+      "radius_m": 0.55,
+      "team": "B"
+    },
+    {
+      "name": "Select_B_Arena1",
+      "position_m": [
+        20.9,
+        -40.55,
+        0.1
+      ],
+      "kind": "arena_selection",
+      "radius_m": 1.0,
+      "team": "B",
+      "target_arena": "Arena_1"
+    },
+    {
+      "name": "Select_B_Arena2",
+      "position_m": [
+        20.9,
+        -43.0,
+        0.1
+      ],
+      "kind": "arena_selection",
+      "radius_m": 1.0,
+      "team": "B",
+      "target_arena": "Arena_2"
+    },
+    {
+      "name": "Select_B_Arena3",
+      "position_m": [
+        20.9,
+        -45.45,
+        0.1
+      ],
+      "kind": "arena_selection",
+      "radius_m": 1.0,
+      "team": "B",
+      "target_arena": "Arena_3"
+    }
+  ],
+  "materials": {
+    "M_R02B_Sand": {
+      "rgb": [
+        0.47999998927116394,
+        0.4000000059604645,
+        0.2800000011920929
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_SandLight": {
+      "rgb": [
+        0.550000011920929,
+        0.4699999988079071,
+        0.33000001311302185
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_Basalt": {
+      "rgb": [
+        0.11999999731779099,
+        0.1899999976158142,
+        0.20000000298023224
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_Stone": {
+      "rgb": [
+        0.25999999046325684,
+        0.3400000035762787,
+        0.3400000035762787
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_CutStone": {
+      "rgb": [
+        0.49000000953674316,
+        0.550000011920929,
+        0.5
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_Gold": {
+      "rgb": [
+        0.7200000286102295,
+        0.47999998927116394,
+        0.1599999964237213
+      ],
+      "roughness": 0.5,
+      "emission": 0.0
+    },
+    "M_R02B_Grass": {
+      "rgb": [
+        0.1599999964237213,
+        0.27000001072883606,
+        0.1899999976158142
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_Leaf": {
+      "rgb": [
+        0.12999999523162842,
+        0.30000001192092896,
+        0.2199999988079071
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_Wood": {
+      "rgb": [
+        0.2800000011920929,
+        0.17000000178813934,
+        0.09000000357627869
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_Canvas": {
+      "rgb": [
+        0.75,
+        0.6700000166893005,
+        0.47999998927116394
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_TeamA": {
+      "rgb": [
+        0.05000000074505806,
+        0.4300000071525574,
+        0.699999988079071
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_TeamB": {
+      "rgb": [
+        0.75,
+        0.20000000298023224,
+        0.14000000059604645
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_GateRed": {
+      "rgb": [
+        0.949999988079071,
+        0.11999999731779099,
+        0.05999999865889549
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.5
+    },
+    "M_R02B_Arena1": {
+      "rgb": [
+        0.7400000095367432,
+        0.5099999904632568,
+        0.1899999976158142
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.10000000149011612
+    },
+    "M_R02B_Arena2": {
+      "rgb": [
+        0.12999999523162842,
+        0.5600000023841858,
+        0.49000000953674316
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.10000000149011612
+    },
+    "M_R02B_Arena3": {
+      "rgb": [
+        0.5199999809265137,
+        0.30000001192092896,
+        0.6399999856948853
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 0.10000000149011612
+    },
+    "M_R02B_Ink": {
+      "rgb": [
+        0.07999999821186066,
+        0.12999999523162842,
+        0.14000000059604645
+      ],
+      "roughness": 0.8500000238418579,
+      "emission": 0.0
+    },
+    "M_R02B_Fire": {
+      "rgb": [
+        1.0,
+        0.4000000059604645,
+        0.03999999910593033
+      ],
+      "roughness": 0.6000000238418579,
+      "emission": 2.0
+    }
+  },
+  "exports": [
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "arena_floors",
+      "asset": "SM_R02B_Arena_Floors",
+      "file": "SM_R02B_Arena_Floors.fbx",
+      "local_min_m": [
+        -24.574357986450195,
+        -33.45000076293945,
+        -2.700000047683716
+      ],
+      "local_max_m": [
+        36.69871139526367,
+        33.45000076293945,
+        0.0
+      ],
+      "triangles": 2280
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "arena_walls",
+      "asset": "SM_R02B_Arena_Walls",
+      "file": "SM_R02B_Arena_Walls.fbx",
+      "local_min_m": [
+        -24.85468864440918,
+        -33.79999923706055,
+        0.0
+      ],
+      "local_max_m": [
+        36.979042053222656,
+        33.79999923706055,
+        3.200000047683716
+      ],
+      "triangles": 3520
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "optional_cover",
+      "asset": "SM_R02B_Optional_Cover",
+      "file": "SM_R02B_Optional_Cover.fbx",
+      "local_min_m": [
+        -18.394804000854492,
+        -29.960735321044922,
+        0.0
+      ],
+      "local_max_m": [
+        33.49871063232422,
+        29.960735321044922,
+        2.260000228881836
+      ],
+      "triangles": 144
+    },
+    {
+      "collision": false,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "inlays_and_decoration",
+      "asset": "SM_R02B_Inlays_and_Decoration",
+      "file": "SM_R02B_Inlays_and_Decoration.fbx",
+      "local_min_m": [
+        -24.87200927734375,
+        -49.81999969482422,
+        0.0
+      ],
+      "local_max_m": [
+        36.99636459350586,
+        49.81999969482422,
+        3.43999981880188
+      ],
+      "triangles": 10600
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "shop_props",
+      "asset": "SM_R02B_Shop_Props",
+      "file": "SM_R02B_Shop_Props.fbx",
+      "local_min_m": [
+        26.500019073486328,
+        -44.94999694824219,
+        0.0
+      ],
+      "local_max_m": [
+        28.499980926513672,
+        44.95000076293945,
+        3.299999713897705
+      ],
+      "triangles": 256
+    },
+    {
+      "collision": false,
+      "origin_m": [
+        0,
+        0,
+        0
+      ],
+      "role": "layout_labels",
+      "asset": "SM_R02B_Layout_Labels",
+      "file": "SM_R02B_Layout_Labels.fbx",
+      "local_min_m": [
+        -14.479707717895508,
+        -45.575279235839844,
+        0.05900000035762787
+      ],
+      "local_max_m": [
+        28.688011169433594,
+        45.484561920166016,
+        0.06699999421834946
+      ],
+      "triangles": 5932
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        6.062177658081055,
+        10.5,
+        0
+      ],
+      "role": "replaceable_corridor",
+      "asset": "SM_R02B_Corridor_1_2",
+      "file": "SM_R02B_Corridor_1_2.fbx",
+      "local_min_m": [
+        -9.762239456176758,
+        -7.408698081970215,
+        -1.4200000762939453
+      ],
+      "local_max_m": [
+        9.762242317199707,
+        7.408698081970215,
+        1.6099998950958252
+      ],
+      "triangles": 180
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        14.28941822052002,
+        5.75,
+        0
+      ],
+      "role": "transfer_gate",
+      "asset": "SM_R02B_Gate_1_to_2",
+      "file": "SM_R02B_Gate_1_to_2.fbx",
+      "local_min_m": [
+        -1.5762438774108887,
+        -2.5901341438293457,
+        0.0
+      ],
+      "local_max_m": [
+        1.5762419700622559,
+        2.590132713317871,
+        2.799999952316284
+      ],
+      "triangles": 168
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        -2.16506290435791,
+        15.25,
+        0
+      ],
+      "role": "transfer_gate",
+      "asset": "SM_R02B_Gate_2_to_1",
+      "file": "SM_R02B_Gate_2_to_1.fbx",
+      "local_min_m": [
+        -1.5762431621551514,
+        -2.59013295173645,
+        0.0
+      ],
+      "local_max_m": [
+        1.5762442350387573,
+        2.590134859085083,
+        2.799999952316284
+      ],
+      "triangles": 168
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        6.062177658081055,
+        -10.5,
+        0
+      ],
+      "role": "replaceable_corridor",
+      "asset": "SM_R02B_Corridor_1_3",
+      "file": "SM_R02B_Corridor_1_3.fbx",
+      "local_min_m": [
+        -9.762242317199707,
+        -7.408699035644531,
+        -1.4200000762939453
+      ],
+      "local_max_m": [
+        9.762240409851074,
+        7.408698081970215,
+        1.6099998950958252
+      ],
+      "triangles": 180
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        14.28941822052002,
+        -5.75,
+        0
+      ],
+      "role": "transfer_gate",
+      "asset": "SM_R02B_Gate_1_to_3",
+      "file": "SM_R02B_Gate_1_to_3.fbx",
+      "local_min_m": [
+        -1.576244592666626,
+        -2.590135097503662,
+        0.0
+      ],
+      "local_max_m": [
+        1.576242208480835,
+        2.5901334285736084,
+        2.799999952316284
+      ],
+      "triangles": 168
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        -2.16506290435791,
+        -15.25,
+        0
+      ],
+      "role": "transfer_gate",
+      "asset": "SM_R02B_Gate_3_to_1",
+      "file": "SM_R02B_Gate_3_to_1.fbx",
+      "local_min_m": [
+        -1.576244592666626,
+        -2.590134382247925,
+        0.0
+      ],
+      "local_max_m": [
+        1.5762428045272827,
+        2.5901336669921875,
+        2.799999952316284
+      ],
+      "triangles": 168
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        -12.12435531616211,
+        -0.0,
+        0
+      ],
+      "role": "replaceable_corridor",
+      "asset": "SM_R02B_Corridor_2_3",
+      "file": "SM_R02B_Corridor_2_3.fbx",
+      "local_min_m": [
+        -3.070000410079956,
+        -9.499999046325684,
+        -1.4200000762939453
+      ],
+      "local_max_m": [
+        3.070000410079956,
+        9.500000953674316,
+        1.6099998950958252
+      ],
+      "triangles": 180
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        -12.12435531616211,
+        9.5,
+        0
+      ],
+      "role": "transfer_gate",
+      "asset": "SM_R02B_Gate_2_to_3",
+      "file": "SM_R02B_Gate_2_to_3.fbx",
+      "local_min_m": [
+        -2.9100000858306885,
+        -0.15999925136566162,
+        0.0
+      ],
+      "local_max_m": [
+        2.9100003242492676,
+        0.16000115871429443,
+        2.799999952316284
+      ],
+      "triangles": 168
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        -12.12435531616211,
+        -9.5,
+        0
+      ],
+      "role": "transfer_gate",
+      "asset": "SM_R02B_Gate_3_to_2",
+      "file": "SM_R02B_Gate_3_to_2.fbx",
+      "local_min_m": [
+        -2.9100003242492676,
+        -0.15999925136566162,
+        0.0
+      ],
+      "local_max_m": [
+        2.9100000858306885,
+        0.16000115871429443,
+        2.799999952316284
+      ],
+      "triangles": 168
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        24,
+        43,
+        0
+      ],
+      "role": "team_lobby_geometry",
+      "asset": "SM_R02B_TeamA_Lobby",
+      "file": "SM_R02B_TeamA_Lobby.fbx",
+      "local_min_m": [
+        -6.730331897735596,
+        -6.799998760223389,
+        -2.700000047683716
+      ],
+      "local_max_m": [
+        6.730335712432861,
+        6.799998760223389,
+        1.8499999046325684
+      ],
+      "triangles": 2092
+    },
+    {
+      "collision": true,
+      "origin_m": [
+        24,
+        -43,
+        0
+      ],
+      "role": "team_lobby_geometry",
+      "asset": "SM_R02B_TeamB_Lobby",
+      "file": "SM_R02B_TeamB_Lobby.fbx",
+      "local_min_m": [
+        -6.730335712432861,
+        -6.799998760223389,
+        -2.700000047683716
+      ],
+      "local_max_m": [
+        6.730331897735596,
+        6.799998760223389,
+        1.8499999046325684
+      ],
+      "triangles": 2092
+    }
+  ],
+  "validation": {
+    "geometry_samples": 801,
+    "floor_and_clearance_errors": [],
+    "gate_blocking_rays_passed": [
+      "Gate_1_to_2",
+      "Gate_2_to_1",
+      "Gate_1_to_3",
+      "Gate_3_to_1",
+      "Gate_2_to_3",
+      "Gate_3_to_2"
+    ],
+    "gates_excluded_from_open_route_check": true,
+    "corridor_width_tested_m": 3.6,
+    "method": "Actual Blender mesh rays; not UE navigation or gameplay testing",
+    "marker_counts": {
+      "duel_spawn": 6,
+      "arena": 3,
+      "transfer_gate": 6,
+      "shop_interaction": 2,
+      "team_lobby": 2,
+      "lobby_spawn": 6,
+      "arena_selection": 6
+    },
+    "mirrored_duel_gate_access": [
+      {
+        "arena": "Arena_1",
+        "team_A_gate_distances_m": [
+          10.111875135788509,
+          16.57558502019696
+        ],
+        "team_B_gate_distances_m": [
+          10.111875135788509,
+          16.57558502019696
+        ]
+      },
+      {
+        "arena": "Arena_2",
+        "team_A_gate_distances_m": [
+          10.111874424428967,
+          16.575585054933057
+        ],
+        "team_B_gate_distances_m": [
+          10.111874415373157,
+          16.57558432226688
+        ]
+      },
+      {
+        "arena": "Arena_3",
+        "team_A_gate_distances_m": [
+          10.11187441537316,
+          16.57558432226688
+        ],
+        "team_B_gate_distances_m": [
+          10.111874424428963,
+          16.575585054933057
+        ]
+      }
+    ]
+  },
+  "ue_map": "/Game/Map/L_Round02_B_TriadArena",
+  "ue_assets": "/Game/Environment/Round02_B_TriadArena",
+  "camera": {
+    "location_m": [
+      -108.0,
+      0.0,
+      140.0
+    ],
+    "target_m": [
+      7,
+      0,
+      0
+    ],
+    "ortho_width_m": 119
+  },
+  "design_notes": [
+    "Shop, selection, spawning, victory, admission and storm logic are deferred.",
+    "Gate meshes are closed static placeholders with independent center pivots.",
+    "For concept B a winner must be admitted at the destination even while its duel continues.",
+    "Concept A supports round 2 succession duels and possible round 3 team combat.",
+    "Concept B lobbies are separate islands: selection/transfer will be game logic."
+  ],
+  "coordinate_frame": "X_NORTH_Y_WEST"
+}
