@@ -11,8 +11,11 @@ class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
 class UFWStatusBarWidget;
+class UFWChatWidget;
 class UFWNetworkSubsystem;
 class AFWCharacter;
+
+enum class EFWChatChannel : uint8;
 
 UCLASS()
 class FRAMEWORK_API AFWPlayerController : public APlayerController
@@ -32,6 +35,14 @@ public:
 	/** StatusBar 위젯 클래스 **/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UFWStatusBarWidget> StatusBarWidgetClass;
+
+	/** chat 위젯 클래스 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UFWChatWidget> ChatWidgetClass;
+
+	/** 채팅 입력 중 우클릭 이동 허용, false면 입력 중에는 이동 차단 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Chat")
+	bool bAllowMouseMoveWhileChatting = true;
 	
 private:
 	UPROPERTY()
@@ -39,6 +50,9 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UFWStatusBarWidget> StatusBarWidgetInstance;
+
+	UPROPERTY()
+	TObjectPtr<UFWChatWidget> ChatWidgetInstance;
 
 protected:
 	virtual void BeginPlay() override;
@@ -74,6 +88,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> CameraLockToggleAction; // 카메라 고정 토글 Y
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> OpenChatAction;   // Enter (Shift+Enter = 전체)
 
 	// ---- 이동 파라미터 ----
 	/** 목적지에 이 거리 안으로 들어오면 도착으로 간주하고 멈춤(작을수록 정확) */
@@ -136,6 +153,14 @@ protected:
 	void OnRecenterCamera(const FInputActionValue& Value);	// 리센터 스페이스바 (기존 Started)
 	void OnRecenterCameraReleased(const FInputActionValue& Value); // 리센터 스페이스바 (holded)
 	void OnCameraLockToggle(const FInputActionValue& Value);    // 카메라 고정 토글
+
+	void OnOpenChat(const FInputActionValue& Value);   // Enter
+
+	UFUNCTION()
+	void HandleChatMessageSubmitted(EFWChatChannel Channel, const FString& MessageText);
+
+	UFUNCTION()
+	void HandleChatClosed();
 
 	virtual void ActivateSkill(int32 SkillIndex);
 
@@ -230,6 +255,15 @@ private:
 	bool bRecenterHeld = false;
 
 	void DrawMovePath();
+
+	/** 채팅 입력창이 열려 있는지 — 게임 키 가드용 **/
+	bool IsChatInputActive() const;
+
+	/** 항상 GameAndUI 유지. bFocusGameViewport = true면 키보드 포커스를 게임 뷰포트로 **/
+	void ApplyGameAndUIInputMode(bool bFocusGameViewport);
+
+	/** 채팅이 닫힌 다음 틱에 게임 뷰포트 포커스 복구 **/
+	void RestoreGameViewportFocus();
 
 	/** 컨트롤러가 소유하는 카메라 리그 **/
 	UPROPERTY()

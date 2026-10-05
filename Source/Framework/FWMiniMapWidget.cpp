@@ -22,8 +22,11 @@ bool UFWMiniMapWidget::Initialize()
         MiniMapImage->SetVisibility(ESlateVisibility::Visible);
     }
 
-    // Widget 자체 표시
-    SetVisibility(ESlateVisibility::Visible);
+    // 위젯 자체와 루트 패널은 클릭 통과, 미니맵 이미지만 마우스를 받음
+    SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    if (UWidget* RootPanel = GetRootWidget()) {
+        RootPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    }
     return true;
 
 }
