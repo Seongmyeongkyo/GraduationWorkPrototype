@@ -19,6 +19,12 @@
 #include "FWMiniMapWidget.h"
 #include "FWStatusBarWidget.h"
 #include "FWHealManaActorComponent.h"
+#include "FWChatWidget.h"
+#include "GameFramework/PlayerState.h"      // PlayerState->GetPlayerName()
+#include "Engine/GameViewportClient.h"      // 게임 뷰포트 포커스 복구
+#include "Widgets/SViewport.h"
+#include "TimerManager.h"                   // SetTimerForNextTick
+#include "InputCoreTypes.h"                 // EKeys
 #include "FWNetworkSubsystem.h"
 
 AFWPlayerController::AFWPlayerController()
@@ -46,6 +52,16 @@ AFWPlayerController::AFWPlayerController()
 	}
 	else {
 		UE_LOG(LogTemp, Error, TEXT("[FW] WBP_StatusBarWidget 에셋을 못 찾음: /Game/UI/WBP_StatusBarWidget"));
+	}
+
+	/** Chat Widget Class 로드 **/
+	static ConstructorHelpers::FClassFinder<UFWChatWidget>
+		ChatClassFinder(TEXT("/Game/UI/WBP_Chat"));
+	if (ChatClassFinder.Succeeded()) {
+		ChatWidgetClass = ChatClassFinder.Class;
+	}
+	else {
+		UE_LOG(LogTemp, Error, TEXT("[FW] WBP_Chat 에셋을 못 찾음: /Game/UI/WBP_Chat"));
 	}
 
 }
@@ -133,6 +149,25 @@ void AFWPlayerController::BeginPlay()
 		}
 	}
 
+	/** Chat Widget 생성 (로컬 컨트롤러만) **/
+	if (IsLocalController()) {
+		if (ChatWidgetClass) {
+			ChatWidgetInstance = CreateWidget<UFWChatWidget>(this, ChatWidgetClass);
+			if (ChatWidgetInstance) {
+				ChatWidgetInstance->AddToViewport(60);   // StatusBar(50) 위, MiniMap(100) 아래
+				ChatWidgetInstance->OnMessageSubmitted.AddDynamic(this, &AFWPlayerController::HandleChatMessageSubmitted);
+				ChatWidgetInstance->OnChatClosed.AddDynamic(this, &AFWPlayerController::HandleChatClosed);
+				UE_LOG(LogTemp, Log, TEXT("[FW] 채팅 위젯 생성 완료"));
+			}
+			else {
+				UE_LOG(LogTemp, Error, TEXT("[FW] 채팅 위젯 생성 실패"));
+			}
+		}
+		else {
+			UE_LOG(LogTemp, Error, TEXT("[FW] ChatWidgetClass 가 NULL — WBP_Chat 경로/부모 클래스 확인"));
+		}
+	}
+
 	if (UFWNetworkSubsystem* Net = GetNetwork())
 	{
 		Net->OnLoginResult.AddDynamic(this, &AFWPlayerController::HandleLoginResult);
@@ -192,6 +227,11 @@ void AFWPlayerController::SetupInputComponent()
 			nullptr, TEXT("/Game/Input/IA_CameraLockToggle.IA_CameraLockToggle"));
 	}
 
+	// 채팅 열기 액션 로드 (Enter)
+	if (!OpenChatAction) {
+		OpenChatAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/IA_OpenChat.IA_OpenChat"));
+	}
+
 	UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(InputComponent);
 	if (!EIC)
 	{
@@ -217,6 +257,11 @@ void AFWPlayerController::SetupInputComponent()
 	if (CameraLockToggleAction) {
 		EIC->BindAction(CameraLockToggleAction, ETriggerEvent::Started, this, &AFWPlayerController::OnCameraLockToggle);
 	}
+
+	// 채팅창 바인딩
+	if (OpenChatAction) {
+		EIC->BindAction(OpenChatAction, ETriggerEvent::Started, this, &AFWPlayerController::OnOpenChat);
+	}
 }
 
 void AFWPlayerController::PlayerTick(float DeltaTime)
@@ -234,6 +279,11 @@ void AFWPlayerController::PlayerTick(float DeltaTime)
 // ----------------------------------------------------------------------------
 void AFWPlayerController::OnMoveTriggered(const FInputActionValue& /*Value*/)
 {
+	// 채팅 입력 중 이동 허용 여부
+	if (IsChatInputActive() && !bAllowMouseMoveWhileChatting) {
+		return;
+	}
+
 	UpdateDestinationFromCursor();
 }
 
@@ -444,6 +494,9 @@ void AFWPlayerController::DrawMovePath()
 // ----------------------------------------------------------------------------
 void AFWPlayerController::OnZoom(const FInputActionValue& Value)
 {
+	// 채팅이 열려 있는 동안 휠은 로그 스크롤 전용 (카메라 휠 차단)
+	if (IsChatInputActive()) { return; }
+
 	const float ScrollDelta = Value.Get<float>();
 	if (FMath::IsNearlyZero(ScrollDelta))
 	{
@@ -464,6 +517,8 @@ static constexpr float SKILL_Q_MANA_COST = 30.f;
 // ----------------------------------------------------------------------------
 void AFWPlayerController::OnSkillQ(const FInputActionValue& /*Value*/) 
 { 
+	if (IsChatInputActive()) { return; }   // ← 추가: 채팅 입력 중에는 스킬 차단
+
 	// 캐릭터 유효성 체크
 	APawn* MyPawn = GetPawn();
 	if (!MyPawn) {
@@ -502,6 +557,8 @@ void AFWPlayerController::OnSkillR(const FInputActionValue& /*Value*/) { Activat
 
 void AFWPlayerController::OnRecenterCamera(const FInputActionValue& Value)
 {
+	if (IsChatInputActive()) { return; }   // 채팅 중 Space = 띄어쓰기
+	
 	UE_LOG(LogTemp, Log, TEXT("[FW] 리센터 스페이스바 눌림"));
 	if (GEngine)
 	{
@@ -531,6 +588,8 @@ void AFWPlayerController::OnRecenterCameraReleased(const FInputActionValue& Valu
 
 void AFWPlayerController::OnCameraLockToggle(const FInputActionValue& Value)
 {
+	if (IsChatInputActive()) { return; }   // 채팅 중 Y = 글자
+
 	bCameraLockedToPawn = !bCameraLockedToPawn;
 
 	UE_LOG(LogTemp, Log, TEXT("[FW] 카메라 고정 토글: %s"),
@@ -566,6 +625,89 @@ void AFWPlayerController::ActivateSkill(int32 SkillIndex)
 		GEngine->AddOnScreenDebugMessage(-1, 4.0f, Color,
 			FString::Printf(TEXT(">> [%s] 스킬"), Name));
 	}
+}
+
+// ----------------------------------------------------------------------------
+// 채팅
+// ----------------------------------------------------------------------------
+void AFWPlayerController::OnOpenChat(const FInputActionValue& /*Value*/)
+{
+	if (!ChatWidgetInstance) {
+		return;
+	}
+
+	// 이미 열려 있는데 Enter가 게임까지 왔다
+	// 입력창이 잠깐 포커스를 잃은 상태(마우스를 누르고 있는 중 등) → 지금 내용 전송
+	if (ChatWidgetInstance->IsChatOpen()) {
+		ChatWidgetInstance->SubmitInput();
+		return;
+	}
+
+	// Shift+Enter = 전체, Enter = 팀
+	const bool bShiftDown = IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift);
+	const EFWChatChannel OpenChannel = bShiftDown ? EFWChatChannel::All : EFWChatChannel::Team;
+
+	ApplyGameAndUIInputMode(false);   // 마우스는 계속 게임이 받음
+	ChatWidgetInstance->OpenChat(OpenChannel);
+}
+
+void AFWPlayerController::HandleChatMessageSubmitted(EFWChatChannel Channel, const FString& MessageText)
+{
+	// PlayerController가 구독중이므로 로컬 loopback 블록 사용 (서버 연결 시 서버에서 수정 필요)
+	FString MyName = TEXT("Me");
+	if (PlayerState && !PlayerState->GetPlayerName().IsEmpty()) {
+		MyName = PlayerState->GetPlayerName();
+	}
+
+	if (ChatWidgetInstance) {
+		ChatWidgetInstance->AddIncomingMessage(Channel, MyName, MessageText);
+	}
+
+	// HandleChatClosed가 전송·취소 공통으로 처리
+}
+
+void AFWPlayerController::HandleChatClosed()
+{
+	ApplyGameAndUIInputMode(false);
+
+	// 입력창의 "Clear Keyboard Focus on Commit"이 이 콜백이 끝난 뒤에 실행됨
+	// 입력창이 닫힐 때 포커스를 주면 바로 지워지므로 다음 틱에 게임 뷰포트로 복구
+	GetWorldTimerManager().SetTimerForNextTick(this, &AFWPlayerController::RestoreGameViewportFocus);
+}
+
+bool AFWPlayerController::IsChatInputActive() const
+{
+	return ChatWidgetInstance && ChatWidgetInstance->IsChatOpen();
+}
+
+void AFWPlayerController::ApplyGameAndUIInputMode(bool bFocusGameViewport)
+{
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+	InputMode.SetHideCursorDuringCapture(false);
+
+	if (bFocusGameViewport) {
+		UGameViewportClient* GVC = GetWorld() ? GetWorld()->GetGameViewport() : nullptr;
+		if (GVC) {
+			TSharedPtr<SViewport> ViewportWidget = GVC->GetGameViewportWidget();
+			if (ViewportWidget.IsValid()) {
+				InputMode.SetWidgetToFocus(ViewportWidget);
+			}
+		}
+	}
+
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
+}
+
+void AFWPlayerController::RestoreGameViewportFocus()
+{
+	// 그 사이 채팅이 다시 열렸으면 건드리지 않음
+	if (IsChatInputActive()) {
+		return;
+	}
+
+	ApplyGameAndUIInputMode(true);
 }
 
 // ----------------------------------------------------------------------------
