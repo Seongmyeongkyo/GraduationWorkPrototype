@@ -106,3 +106,6 @@ __pycache__/
 /Art/UI/TitleScreen/CloseIN_TitleBackground_Forest_v2.png
 /Art/UI/TitleScreen/CloseIN_TitleBackground_Forest_v3.png
 /Art/UI/LoginScreen/CloseIN_LoginBackground_v1.png
+
+# exclude Test Source
+/Source/FrameWork/Tests
