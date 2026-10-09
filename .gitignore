@@ -109,3 +109,4 @@ __pycache__/
 
 # exclude Test Source
 /Source/FrameWork/Tests
+Art/UI/LoginScreen/WindPreview/index.html
