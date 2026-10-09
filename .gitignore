@@ -78,6 +78,8 @@ __pycache__/
 *.py[cod]
 
 # Local agent instructions and authoring automation (not runtime game code)
+/.local-work/
+/.claude/settings.local.json
 /AGENTS.md
 /Scripts/LocalAutomation/
 /Scripts/Blender/
@@ -92,3 +94,18 @@ __pycache__/
 /Art/Maps/*/*Verification.json
 /Art/Maps/*/Validation.json
 /Art/Maps/*/Unreal_Import_Report.json
+
+# Legacy locations for local work notes (new notes belong in .local-work)
+/Docs/WeeklyDevelopmentReview.md
+/Docs/MainMenu.md
+/Art/Maps/*/README.md
+
+# Paused title/login background concepts (keep these drafts local)
+/Art/UI/TitleScreen/CloseIN_TitleBackground_v1.png
+/Art/UI/TitleScreen/CloseIN_TitleBackground_Forest_v1.png
+/Art/UI/TitleScreen/CloseIN_TitleBackground_Forest_v2.png
+/Art/UI/TitleScreen/CloseIN_TitleBackground_Forest_v3.png
+/Art/UI/LoginScreen/CloseIN_LoginBackground_v1.png
+
+# exclude Test Source
+/Source/FrameWork/Tests

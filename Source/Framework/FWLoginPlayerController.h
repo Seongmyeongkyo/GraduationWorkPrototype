@@ -2,17 +2,17 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "FWMainMenuPlayerController.generated.h"
+#include "FWLoginPlayerController.generated.h"
 
-class UFWMainMenuWidget;
+class UFWLoginWidget;
 
 UCLASS(Config = Game)
-class FRAMEWORK_API AFWMainMenuPlayerController : public APlayerController
+class FRAMEWORK_API AFWLoginPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
 public:
-	AFWMainMenuPlayerController();
+	AFWLoginPlayerController();
 
 	/** Separate entry point so server admission can precede travel later. */
 	UFUNCTION(BlueprintCallable, Category = "Menu")
@@ -31,7 +31,7 @@ protected:
 
 private:
 	UPROPERTY(Transient)
-	TObjectPtr<UFWMainMenuWidget> MenuWidget;
+	TObjectPtr<UFWLoginWidget> MenuWidget;
 
 	bool bStartingGame = false;
 };
