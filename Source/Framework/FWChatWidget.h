@@ -37,7 +37,7 @@ struct FFWChatLine
 	GENERATED_BODY()
 
 	UPROPERTY()
-	TObjectPtr<UTextBlock> TextWidget = nullptr;
+	TObjectPtr<UWidget> TextWidget = nullptr;
 
 	/** 줄이 추가된 시각 (World 시간으로 계산) **/
 	double SpawnTime = 0.0;
@@ -63,7 +63,7 @@ public:
 
 	/** 로그에 한 줄 추가 — 로컬 loopback **/
 	UFUNCTION(BlueprintCallable, Category = "FW|Chat")
-	void AddIncomingMessage(EFWChatChannel Channel, const FString& SenderName, const FString& MessageText);
+	void AddIncomingMessage(EFWChatChannel Channel, const FString& SenderName, const FString& MessageText, bool bIsTeam = true);
 
 	UFUNCTION(BlueprintPure, Category = "FW|Chat")
 	bool IsChatOpen() const { return bChatOpen; }
@@ -115,13 +115,19 @@ protected:
 	float MessageFontSize = 14.f;
 
 	UPROPERTY(EditAnywhere, Category = "FW|Chat|Color")
-	FLinearColor AllChannelColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.f);
+	FLinearColor AllChannelColor = FLinearColor(1.f, 1.f, 1.f, 1.f);
 
 	UPROPERTY(EditAnywhere, Category = "FW|Chat|Color")
-	FLinearColor TeamChannelColor = FLinearColor(0.1f, 0.6f, 0.4f, 1.f);
+	FLinearColor TeamChannelColor = FLinearColor(1.f, 1.f, 1.f, 1.f);
 
 	UPROPERTY(EditAnywhere, Category = "FW|Chat|Color")
 	FLinearColor SystemChannelColor = FLinearColor(1.f, 1.f, 0.0f, 1.f);
+
+	UPROPERTY(EditAnywhere, Category = "FW|Chat|Color")
+	FLinearColor TeamNameColor = FLinearColor(0.1f, 0.5f, 1.f, 1.f);
+
+	UPROPERTY(EditAnywhere, Category = "FW|Chat|Color")
+	FLinearColor EnemyNameColor = FLinearColor(1.f, 0.1f, 0.1f, 1.f);
 
 	UPROPERTY(EditAnywhere, Category = "FW|Chat|Color")
 	FLinearColor MessageShadowColor = FLinearColor(0.f, 0.f, 0.f, 1.f);

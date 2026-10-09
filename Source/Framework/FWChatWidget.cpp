@@ -10,6 +10,8 @@
 #include "Framework/Application/SlateApplication.h"
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 
 // ============================================================================
 // 생명주기
@@ -29,6 +31,15 @@ void UFWChatWidget::NativeConstruct()
 void UFWChatWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	// 채팅 입력 중 마우스 클릭이 발생하면 ESC 없이도 입력 취소
+	if (bChatOpen) {
+		if (const APlayerController* OwningPC = GetOwningPlayer()) {
+			if (OwningPC->WasInputKeyJustPressed(EKeys::LeftMouseButton) || OwningPC->WasInputKeyJustPressed(EKeys::RightMouseButton)) {
+				CloseChat();
+			}
+		}
+	}
 
 	UpdateLineOpacities();   // 닫힌 상태 페이드
 	MaintainInputFocus();    // 열린 상태 입력창 포커스 유지
@@ -133,7 +144,7 @@ void UFWChatWidget::SubmitText(const FString& RawText)
 // ============================================================================
 // 메시지 표시
 // ============================================================================
-void UFWChatWidget::AddIncomingMessage(EFWChatChannel Channel, const FString& SenderName, const FString& MessageText)
+void UFWChatWidget::AddIncomingMessage(EFWChatChannel Channel, const FString& SenderName, const FString& MessageText, bool bIsTeam)
 {
 	if (!MessageScrollBox || !WidgetTree) {
 		return;
@@ -147,24 +158,50 @@ void UFWChatWidget::AddIncomingMessage(EFWChatChannel Channel, const FString& Se
 	const bool bStickToEnd = !bChatOpen
 		|| MessageScrollBox->GetScrollOffset() >= MessageScrollBox->GetScrollOffsetOfEnd() - 1.f;
 
-	UTextBlock* NewLine = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+	// [채널] [이름] [내용] 조각 순서
+	UHorizontalBox* NewLine = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
 	if (!NewLine) {
 		return;
 	}
 
-	const FString Formatted = (Channel == EFWChatChannel::System)
-		? FString::Printf(TEXT("%s %s"), *GetChannelPrefix(Channel), *MessageText)
-		: FString::Printf(TEXT("%s %s: %s"), *GetChannelPrefix(Channel), *SenderName, *MessageText);
+	const FLinearColor LineColor = GetColorForChannel(Channel);             // 채널 표시와 내용에 쓰는 색
+	const FLinearColor NameColor = bIsTeam ? TeamNameColor : EnemyNameColor; // 이름에만 쓰는 색
+	const float PieceGap = MessageFontSize * 0.35f;                         // 조각 사이 간격
 
-	NewLine->SetText(FText::FromString(Formatted));
-	NewLine->SetColorAndOpacity(FSlateColor(GetColorForChannel(Channel)));
-	NewLine->SetAutoWrapText(true);                            // 긴 문장 자동 줄바꿈
-	NewLine->SetShadowOffset(FVector2D(1.f, 1.f));
-	NewLine->SetShadowColorAndOpacity(MessageShadowColor);
+	// 조각 하나 = 같은 글꼴·그림자를 쓰는 TextBlock. bFillAndWrap이면 남은 폭을 채우고 그 안에서 줄바꿈
+	auto AddPiece = [this, NewLine](const FString& PieceText, const FLinearColor& PieceColor, float LeftPadding, bool bFillAndWrap) {
+		UTextBlock* Piece = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+		if (!Piece) {
+			return;
+		}
 
-	FSlateFontInfo FontInfo = NewLine->GetFont();
-	FontInfo.Size = MessageFontSize;
-	NewLine->SetFont(FontInfo);
+		Piece->SetText(FText::FromString(PieceText));
+		Piece->SetColorAndOpacity(FSlateColor(PieceColor));
+		Piece->SetAutoWrapText(bFillAndWrap);                      // 긴 문장 자동 줄바꿈
+		Piece->SetShadowOffset(FVector2D(1.f, 1.f));
+		Piece->SetShadowColorAndOpacity(MessageShadowColor);
+
+		FSlateFontInfo FontInfo = Piece->GetFont();
+		FontInfo.Size = MessageFontSize;
+		Piece->SetFont(FontInfo);
+
+		// 가로 상자에 붙이고, 줄바꿈하는 조각만 남은 폭을 채우게 함
+		if (UHorizontalBoxSlot* PieceSlot = NewLine->AddChildToHorizontalBox(Piece)) {
+			PieceSlot->SetPadding(FMargin(LeftPadding, 0.f, 0.f, 0.f));
+			if (bFillAndWrap) {
+				PieceSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+			}
+		}
+		};
+
+	AddPiece(GetChannelPrefix(Channel), LineColor, 0.f, false);                        // [전체] / [팀] / [시스템]
+	if (Channel == EFWChatChannel::System) {
+		AddPiece(MessageText, LineColor, PieceGap, true);                              // 내용
+	}
+	else {
+		AddPiece(SenderName, NameColor, PieceGap, false);                              // 이름
+		AddPiece(FString::Printf(TEXT(": %s"), *MessageText), LineColor, 0.f, true);   // 내용
+	}
 
 	MessageScrollBox->AddChild(NewLine);
 
