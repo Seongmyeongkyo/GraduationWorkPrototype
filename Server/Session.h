@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -19,7 +20,12 @@ public:
     float m_hp;         // 클라이언트가 마지막으로 보고한 값 (검증 안 함)
     float m_mp;         // 서버가 관리 (스킬 사용 시 차감, 1초마다 회복)
     int32_t m_exp;      // C2S_GetExp로 받은 양의 누적
+    int m_team;         // 0 또는 1. 접속 시 랜덤 배정 (임시, GameServer.cpp의 PickTeam)
     std::string m_ip;   // 로그용
+
+    // 채팅 도배 제한용
+    std::chrono::steady_clock::time_point m_chat_window_start;
+    int m_chat_count;
 
     SESSION();
     ~SESSION();
@@ -47,10 +53,17 @@ public:
     void send_skill_fail(uint8_t skillIndex);
     void regen_mana(float amount); // MAX_MANA까지만 회복, 실제로 변했을 때만 본인에게 전송
 
+    // 채팅. sender_id = -1이면 시스템 메시지.
+    void send_chat(int sender_id, uint8_t channel, const char* message);
+    bool allow_chat(); // 도배 제한에 걸리지 않았으면 true (호출 횟수를 셈)
+
     void process_packet(unsigned char* p);
 };
 
 extern std::array<SESSION, MAX_PLAYERS> clients;
+
+// 접속 중인 모두에게 시스템 채팅을 보낸다. g_clients_mutex를 잡은 상태에서 호출할 것.
+void broadcast_system_chat(const std::string& message);
 
 // clients 접근 보호용. 워커 스레드가 완료 처리 1건마다 잡는다.
 // SESSION 메서드는 이미 잡힌 상태를 전제하므로 안에서 다시 잡으면 안 된다 (재귀 락이 아니라 데드락).

@@ -16,6 +16,14 @@ namespace FWNet
 	constexpr float SKILL_MANA_COST = 20.f;
 	constexpr float MANA_REGEN_PER_SECOND = 5.f;
 
+	// Chat message size in UTF-8 bytes, including the null terminator (~49 Korean characters).
+	constexpr int32_t CHAT_MAX_BYTES = 150;
+
+	// Chat channel values on the wire - same order as EFWChatChannel (All, Team, System).
+	constexpr uint8_t CHAT_ALL = 0;
+	constexpr uint8_t CHAT_TEAM = 1;
+	constexpr uint8_t CHAT_SYSTEM = 2; // server-only (join/leave notices etc.)
+
 	enum PACKET_TYPE : uint8_t
 	{
 		C2S_LOGIN = 0, C2S_MOVE,
@@ -23,7 +31,8 @@ namespace FWNet
 		C2S_ATTACK, C2S_SKILL, C2S_HIT, C2S_GET_EXP, C2S_GET_ITEM,
 		S2C_PLAYER_ATTACK, S2C_PLAYER_SKILL, S2C_PLAYER_HIT, S2C_EXP_RESULT, S2C_ITEM_RESULT,
 		C2S_UPDATE_HEALTH,
-		S2C_MANA_UPDATE, S2C_SKILL_FAIL
+		S2C_MANA_UPDATE, S2C_SKILL_FAIL,
+		C2S_CHAT, S2C_CHAT
 	};
 
 #pragma pack(push, 1)
@@ -195,6 +204,30 @@ namespace FWNet
 		uint8_t size;
 		PACKET_TYPE type;
 		uint8_t skillIndex;
+	};
+
+	// ---- Chat ----
+
+	// No sender name here - the server fills it in, so nobody can impersonate someone else.
+	struct C2S_Chat
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		uint8_t channel;               // CHAT_ALL or CHAT_TEAM
+		char message[CHAT_MAX_BYTES];  // UTF-8
+	};
+
+	// Sent to every recipient including the sender. isTeammate is filled per recipient.
+	// System messages: senderId = -1, empty senderName.
+	struct S2C_Chat
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		int32_t senderId;
+		uint8_t channel;
+		uint8_t isTeammate;
+		char senderName[MAX_NAME_LEN];
+		char message[CHAT_MAX_BYTES];
 	};
 #pragma pack(pop)
 }

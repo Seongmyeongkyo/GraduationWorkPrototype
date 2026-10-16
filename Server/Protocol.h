@@ -15,6 +15,15 @@ constexpr float MAX_MANA = 100.f;
 constexpr float SKILL_MANA_COST = 20.f;
 constexpr float MANA_REGEN_PER_SECOND = 5.f;
 
+// 채팅 메시지 최대 바이트 (UTF-8, 널 문자 포함). 한글은 약 49자.
+// 패킷 크기 필드가 1바이트이고 서버 수신 버퍼가 200바이트라서 이 이상 늘리기 어렵다.
+constexpr int CHAT_MAX_BYTES = 150;
+
+// 채팅 채널 값. 클라이언트 EFWChatChannel(All, Team, System) 순서와 같아야 한다.
+constexpr uint8_t CHAT_ALL = 0;
+constexpr uint8_t CHAT_TEAM = 1;
+constexpr uint8_t CHAT_SYSTEM = 2; // 서버만 보낼 수 있음 (접속/퇴장 알림 등)
+
 // uint8_t/int32_t는 언리얼의 uint8/int32와 크기가 같다.
 enum PACKET_TYPE : uint8_t {
     C2S_LOGIN = 0, C2S_MOVE,
@@ -28,7 +37,10 @@ enum PACKET_TYPE : uint8_t {
     C2S_UPDATE_HEALTH,
 
     // 마나 (서버가 관리)
-    S2C_MANA_UPDATE, S2C_SKILL_FAIL
+    S2C_MANA_UPDATE, S2C_SKILL_FAIL,
+
+    // 채팅
+    C2S_CHAT, S2C_CHAT
 };
 
 #pragma pack(push, 1) // 패딩 제거 (클라이언트와 바이트 배치 일치)
@@ -182,6 +194,28 @@ struct S2C_SkillFail {
     PACKET_TYPE type;
     uint8_t skillIndex;
 };
+
+// ---- 채팅 ----
+
+// 보낸 사람 이름은 서버가 채우므로 클라이언트는 채널과 내용만 보낸다 (사칭 방지).
+struct C2S_Chat {
+    uint8_t size;
+    PACKET_TYPE type;
+    uint8_t channel;               // CHAT_ALL 또는 CHAT_TEAM
+    char message[CHAT_MAX_BYTES];  // UTF-8
+};
+
+// 보낸 사람 본인 포함 받을 사람 모두에게 전송. 받는 사람마다 isTeammate를 따로 채운다.
+// 시스템 메시지는 senderId = -1, senderName은 빈 문자열.
+struct S2C_Chat {
+    uint8_t size;
+    PACKET_TYPE type;
+    int32_t senderId;
+    uint8_t channel;
+    uint8_t isTeammate;            // 1 = 받는 사람과 같은 팀
+    char senderName[MAX_NAME_LEN];
+    char message[CHAT_MAX_BYTES];
+};
 #pragma pack(pop)
 
 // 클라이언트가 보낼 수 있는 패킷의 정확한 크기 (C2S 타입이 아니면 0).
@@ -197,6 +231,7 @@ constexpr int ExpectedC2SPacketSize(uint8_t type) {
     case C2S_GET_EXP:       return sizeof(C2S_GetExp);
     case C2S_GET_ITEM:      return sizeof(C2S_GetItem);
     case C2S_UPDATE_HEALTH: return sizeof(C2S_UpdateHealth);
+    case C2S_CHAT:          return sizeof(C2S_Chat);
     default:                return 0;
     }
 }

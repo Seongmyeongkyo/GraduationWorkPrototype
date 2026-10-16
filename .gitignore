@@ -109,3 +109,6 @@ __pycache__/
 
 # exclude Test Source
 /Source/FrameWork/Tests
+
+# Personal AI working-style guide (server owner only)
+/CLAUDE.md

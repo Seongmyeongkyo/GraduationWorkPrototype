@@ -210,6 +210,9 @@ protected:
 	void HandleManaUpdate(float CurrentMana, float MaxMana);
 
 	UFUNCTION()
+	void HandleChatReceived(int32 SenderId, int32 Channel, const FString& SenderName, const FString& Message, bool bIsTeammate);
+
+	UFUNCTION()
 	void HandleConnectionFailed(const FString& Reason);
 
 private:

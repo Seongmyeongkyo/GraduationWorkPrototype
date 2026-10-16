@@ -179,6 +179,7 @@ void AFWPlayerController::BeginPlay()
 		Net->OnPlayerSkill.AddDynamic(this, &AFWPlayerController::HandlePlayerSkill);
 		Net->OnSkillFailed.AddDynamic(this, &AFWPlayerController::HandleSkillFailed);
 		Net->OnManaUpdate.AddDynamic(this, &AFWPlayerController::HandleManaUpdate);
+		Net->OnChatReceived.AddDynamic(this, &AFWPlayerController::HandleChatReceived);
 		Net->OnConnectionFailed.AddDynamic(this, &AFWPlayerController::HandleConnectionFailed);
 
 		if (Net->ConnectToServer(ServerIP, ServerPort))
@@ -693,9 +694,23 @@ void AFWPlayerController::OnOpenChat(const FInputActionValue& /*Value*/)
 	ChatWidgetInstance->OpenChat(OpenChannel);
 }
 
+// The wire values (FWNet::CHAT_*) are just the enum's underlying values - catch any reordering at compile time.
+static_assert(static_cast<uint8>(EFWChatChannel::All) == FWNet::CHAT_ALL, "Chat channel mismatch");
+static_assert(static_cast<uint8>(EFWChatChannel::Team) == FWNet::CHAT_TEAM, "Chat channel mismatch");
+static_assert(static_cast<uint8>(EFWChatChannel::System) == FWNet::CHAT_SYSTEM, "Chat channel mismatch");
+
 void AFWPlayerController::HandleChatMessageSubmitted(EFWChatChannel Channel, const FString& MessageText)
 {
-	// PlayerController가 구독중이므로 로컬 loopback 블록 사용 (서버 연결 시 서버에서 수정 필요)
+	// Server connected: the line is shown when the server relays it back (HandleChatReceived),
+	// so every client sees the same order.
+	UFWNetworkSubsystem* Net = GetNetwork();
+	if (Net && Net->IsServerAuthoritative())
+	{
+		Net->SendChat(static_cast<int32>(Channel), MessageText);
+		return;
+	}
+
+	// 서버 미접속 시: 로컬 loopback으로 내 화면에만 표시
 	FString MyName = TEXT("Me");
 	if (PlayerState && !PlayerState->GetPlayerName().IsEmpty()) {
 		MyName = PlayerState->GetPlayerName();
@@ -873,4 +888,13 @@ void AFWPlayerController::HandleManaUpdate(float CurrentMana, float MaxMana)
 			MyChar->AttributeComp->ApplyServerMana(CurrentMana, MaxMana);
 		}
 	}
+}
+
+void AFWPlayerController::HandleChatReceived(int32 /*SenderId*/, int32 Channel, const FString& SenderName, const FString& Message, bool bIsTeammate)
+{
+	if (!ChatWidgetInstance || Channel < 0 || Channel > FWNet::CHAT_SYSTEM)
+	{
+		return;
+	}
+	ChatWidgetInstance->AddIncomingMessage(static_cast<EFWChatChannel>(Channel), SenderName, Message, bIsTeammate);
 }

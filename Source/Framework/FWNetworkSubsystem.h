@@ -22,6 +22,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnExpResult, int32, Amount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnItemResult, int32, ItemId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FFWOnManaUpdate, float, CurrentMana, float, MaxMana);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnSkillFailed, int32, SkillIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FFWOnChatReceived, int32, SenderId, int32, Channel, const FString&, SenderName, const FString&, Message, bool, bIsTeammate);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnConnectionFailed, const FString&, Reason);
 
 /**
@@ -88,6 +89,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network")
 	void SendUpdateHealth(float CurrentHealth);
 
+	/** Channel is an FWNet::CHAT_* value. Text longer than CHAT_MAX_BYTES (UTF-8) is cut at a character boundary. */
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void SendChat(int32 Channel, const FString& Message);
+
 	UPROPERTY(BlueprintAssignable, Category = "Network")
 	FFWOnLoginResult OnLoginResult;
 
@@ -125,6 +130,10 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Network")
 	FFWOnSkillFailed OnSkillFailed;
+
+	/** Every chat line from the server, including our own messages echoed back and system notices (SenderId = -1). */
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnChatReceived OnChatReceived;
 
 	/** Broadcast whenever a connection attempt fails, immediately or after the async handshake times out/errors. */
 	UPROPERTY(BlueprintAssignable, Category = "Network")

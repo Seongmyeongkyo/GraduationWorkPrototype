@@ -4,8 +4,38 @@
 
 using namespace std;
 
+// 가장 큰 패킷도 송수신 버퍼(BUF_SIZE)와 1바이트 크기 필드에 들어가야 한다.
+static_assert(sizeof(S2C_Chat) <= BUF_SIZE && sizeof(S2C_Chat) <= 255, "S2C_Chat too large");
+static_assert(sizeof(C2S_Chat) <= BUF_SIZE && sizeof(C2S_Chat) <= 255, "C2S_Chat too large");
+
 std::array<SESSION, MAX_PLAYERS> clients;
 std::mutex g_clients_mutex;
+
+namespace {
+    // 채팅 도배 제한: CHAT_LIMIT_WINDOW 동안 CHAT_LIMIT_COUNT개까지
+    constexpr int CHAT_LIMIT_COUNT = 5;
+    constexpr auto CHAT_LIMIT_WINDOW = std::chrono::seconds(5);
+
+    // 널 종료를 보장하고 제어문자(줄바꿈 등)는 공백으로 바꾼다 (로그 위조, 채팅창 줄 깨짐 방지).
+    // 공백뿐이면 false.
+    bool sanitize_chat(const char* src, char (&dst)[CHAT_MAX_BYTES]) {
+        bool has_text = false;
+        int i = 0;
+        for (; i < CHAT_MAX_BYTES - 1 && src[i] != '\0'; ++i) {
+            unsigned char c = static_cast<unsigned char>(src[i]);
+            if (c < 0x20 || c == 0x7F) c = ' ';
+            if (c != ' ') has_text = true;
+            dst[i] = static_cast<char>(c);
+        }
+        dst[i] = '\0';
+        return has_text;
+    }
+}
+
+void broadcast_system_chat(const std::string& message) {
+    for (auto& cl : clients)
+        if (cl.m_is_connected) cl.send_chat(-1, CHAT_SYSTEM, message.c_str());
+}
 
 SESSION::SESSION() {
     m_recv_over.m_iotype = IO_RECV;
@@ -20,7 +50,10 @@ void SESSION::reset() {
     memset(m_username, 0, sizeof(m_username));
     m_x = 0.f; m_y = 0.f; m_z = 0.f;
     m_hp = 100.f; m_mp = MAX_MANA; m_exp = 0;
+    m_team = 0;
     m_ip.clear();
+    m_chat_window_start = {};
+    m_chat_count = 0;
 }
 
 SESSION::~SESSION() {
@@ -167,6 +200,32 @@ void SESSION::regen_mana(float amount) {
     send_mana_update();
 }
 
+void SESSION::send_chat(int sender_id, uint8_t channel, const char* message) {
+    S2C_Chat packet{};
+    packet.size = sizeof(S2C_Chat);
+    packet.type = S2C_CHAT;
+    packet.senderId = sender_id;
+    packet.channel = channel;
+    if (sender_id >= 0 && sender_id < MAX_PLAYERS) {
+        const SESSION& sender = clients[sender_id];
+        memcpy(packet.senderName, sender.m_username, sizeof(packet.senderName));
+        packet.isTeammate = (sender.m_team == m_team) ? 1 : 0;
+    }
+    strncpy_s(packet.message, message, _TRUNCATE);
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
+bool SESSION::allow_chat() {
+    const auto now = std::chrono::steady_clock::now();
+    if (m_chat_count == 0 || now - m_chat_window_start >= CHAT_LIMIT_WINDOW) {
+        m_chat_window_start = now;
+        m_chat_count = 0;
+    }
+    if (m_chat_count >= CHAT_LIMIT_COUNT) return false;
+    ++m_chat_count;
+    return true;
+}
+
 void SESSION::process_packet(unsigned char* p) {
     PACKET_TYPE type = static_cast<PACKET_TYPE>(p[1]);
     switch (type) {
@@ -183,6 +242,7 @@ void SESSION::process_packet(unsigned char* p) {
             other.send_add_player(m_id);
             send_add_player(other.m_id);
         }
+        broadcast_system_chat(std::string(m_username) + "님이 접속했습니다.");
         break;
     }
     case C2S_MOVE: {
@@ -240,6 +300,33 @@ void SESSION::process_packet(unsigned char* p) {
         C2S_UpdateHealth* packet = reinterpret_cast<C2S_UpdateHealth*>(p);
         m_hp = packet->currentHealth;
         Logger::Log("[HEALTH] id=" + to_string(m_id) + " hp=" + to_string(m_hp));
+        break;
+    }
+    case C2S_CHAT: {
+        C2S_Chat* packet = reinterpret_cast<C2S_Chat*>(p);
+        // 로그인 전이거나, 클라이언트가 보낼 수 없는 채널(System 등)이면 무시
+        if (m_username[0] == '\0') break;
+        if (packet->channel != CHAT_ALL && packet->channel != CHAT_TEAM) {
+            Logger::Log("[CHAT REJECT] id=" + to_string(m_id) + " reason=bad channel " + to_string(static_cast<int>(packet->channel)));
+            break;
+        }
+
+        char message[CHAT_MAX_BYTES];
+        if (!sanitize_chat(packet->message, message)) break; // 빈 메시지
+
+        if (!allow_chat()) {
+            Logger::Log("[CHAT REJECT] id=" + to_string(m_id) + " reason=rate limit");
+            send_chat(-1, CHAT_SYSTEM, "메시지를 너무 빠르게 보내고 있습니다.");
+            break;
+        }
+
+        const bool team_only = (packet->channel == CHAT_TEAM);
+        Logger::Log("[CHAT] id=" + to_string(m_id) + " channel=" + (team_only ? "team" : "all") + " msg=" + message);
+        for (auto& cl : clients) {
+            if (!cl.m_is_connected) continue;
+            if (team_only && cl.m_team != m_team) continue;
+            cl.send_chat(m_id, packet->channel, message); // 보낸 본인도 받는다 (모든 클라이언트의 채팅 순서를 같게)
+        }
         break;
     }
     default: break;

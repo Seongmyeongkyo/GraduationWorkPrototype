@@ -7,6 +7,20 @@
 
 using namespace FWNet;
 
+namespace
+{
+	// Fixed-size char fields from the server aren't guaranteed to be null-terminated - never read past MaxBytes.
+	FString BoundedUtf8ToString(const char* Text, int32 MaxBytes)
+	{
+		int32 Len = 0;
+		while (Len < MaxBytes && Text[Len] != '\0')
+		{
+			++Len;
+		}
+		return FString::ConstructFromPtrSize(reinterpret_cast<const UTF8CHAR*>(Text), Len);
+	}
+}
+
 void UFWNetworkSubsystem::Deinitialize()
 {
 	Disconnect();
@@ -186,6 +200,24 @@ void UFWNetworkSubsystem::SendUpdateHealth(float CurrentHealth)
 	SendBytes(&Packet, Packet.size);
 }
 
+void UFWNetworkSubsystem::SendChat(int32 Channel, const FString& Message)
+{
+	C2S_Chat Packet{};
+	Packet.size = sizeof(C2S_Chat);
+	Packet.type = C2S_CHAT;
+	Packet.channel = static_cast<uint8_t>(Channel);
+
+	// Leave room for the null and don't split a multi-byte UTF-8 character (continuation bytes are 10xxxxxx).
+	const FTCHARToUTF8 Utf8(*Message);
+	int32 Len = FMath::Min(Utf8.Length(), CHAT_MAX_BYTES - 1);
+	while (Len > 0 && Len < Utf8.Length() && (static_cast<uint8>(Utf8.Get()[Len]) & 0xC0) == 0x80)
+	{
+		--Len;
+	}
+	FMemory::Memcpy(Packet.message, Utf8.Get(), Len);
+	SendBytes(&Packet, Packet.size);
+}
+
 void UFWNetworkSubsystem::Tick(float DeltaTime)
 {
 	if (!Socket)
@@ -328,6 +360,15 @@ void UFWNetworkSubsystem::ProcessPacket(const uint8* Packet)
 	{
 		const auto* P = reinterpret_cast<const S2C_SkillFail*>(Packet);
 		OnSkillFailed.Broadcast(P->skillIndex);
+		break;
+	}
+	case S2C_CHAT:
+	{
+		const auto* P = reinterpret_cast<const S2C_Chat*>(Packet);
+		OnChatReceived.Broadcast(P->senderId, P->channel,
+			BoundedUtf8ToString(P->senderName, MAX_NAME_LEN),
+			BoundedUtf8ToString(P->message, CHAT_MAX_BYTES),
+			P->isTeammate != 0);
 		break;
 	}
 	default:

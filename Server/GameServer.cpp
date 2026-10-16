@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include <cstring>
 #include <mutex>
+#include <random>
 #include <string>
 #include <thread>
 #include <vector>
@@ -9,6 +10,26 @@
 using namespace std;
 
 namespace {
+    // 팀 배정 (임시): 접속 시 랜덤. 나중에 로비/팀 선택이 생기면 교체한다.
+    // 한 팀만 TEAM_SIZE명이 찼으면 다른 팀으로 보내서 6명 기준 3대3이 깨지지 않게 한다.
+    constexpr int TEAM_COUNT = 2;
+    constexpr int TEAM_SIZE = 3;
+
+    int PickTeam(int self_id) {
+        static std::mt19937 rng{ std::random_device{}() };
+
+        int count[TEAM_COUNT] = {};
+        for (const auto& cl : clients) {
+            if (cl.m_is_connected && cl.m_id != self_id && cl.m_team >= 0 && cl.m_team < TEAM_COUNT) {
+                ++count[cl.m_team];
+            }
+        }
+        const bool full0 = count[0] >= TEAM_SIZE;
+        const bool full1 = count[1] >= TEAM_SIZE;
+        if (full0 != full1) return full0 ? 1 : 0;
+        return std::uniform_int_distribution<int>(0, TEAM_COUNT - 1)(rng);
+    }
+
     // 로그용 IP 조회. 실패해도 접속에는 영향 없음.
     std::string GetPeerIp(SOCKET s) {
         sockaddr_in addr{};
@@ -88,6 +109,9 @@ void GameServer::Disconnect(int p_id) {
     clients[p_id].m_is_connected = false;
     for (auto& cl : clients) {
         if (cl.m_is_connected) cl.send_remove_player(p_id);
+    }
+    if (clients[p_id].m_username[0] != '\0') {
+        broadcast_system_chat(std::string(clients[p_id].m_username) + "님이 나갔습니다.");
     }
     closesocket(clients[p_id].m_client);
     clients[p_id].reset();
@@ -177,8 +201,10 @@ void GameServer::WorkerLoop() {
                 clients[player_index].m_client = m_client_socket;
                 clients[player_index].m_id = player_index;
                 clients[player_index].m_ip = GetPeerIp(m_client_socket);
+                clients[player_index].m_team = PickTeam(player_index);
                 // 나머지 필드는 이미 초기화 상태 (생성자 또는 Disconnect()의 reset())
-                Logger::Log("[CONNECT] id=" + std::to_string(player_index) + " ip=" + clients[player_index].m_ip);
+                Logger::Log("[CONNECT] id=" + std::to_string(player_index) + " ip=" + clients[player_index].m_ip
+                    + " team=" + std::to_string(clients[player_index].m_team));
                 clients[player_index].send_login_success();
                 clients[player_index].do_recv();
             }
