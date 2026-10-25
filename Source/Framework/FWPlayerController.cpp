@@ -25,6 +25,7 @@
 #include "Widgets/SViewport.h"
 #include "TimerManager.h"                   // SetTimerForNextTick
 #include "InputCoreTypes.h"                 // EKeys
+#include "FWSkillIndicator.h"
 #include "FWNetworkSubsystem.h"
 
 AFWPlayerController::AFWPlayerController()
@@ -64,6 +65,11 @@ AFWPlayerController::AFWPlayerController()
 		UE_LOG(LogTemp, Error, TEXT("[FW] WBP_Chat 에셋을 못 찾음: /Game/UI/WBP_Chat"));
 	}
 
+	/** 스킬별 범위 표시 기본값 (임시 값 - 스킬 기획에 맞게 조정) **/
+	SkillAimSpecs[0].Range = 1100.f;  SkillAimSpecs[0].Width = 120.f;   // Q
+	SkillAimSpecs[1].Range = 800.f;   SkillAimSpecs[1].Width = 180.f;   // W
+	SkillAimSpecs[2].Range = 600.f;   SkillAimSpecs[2].Width = 100.f;   // E
+	SkillAimSpecs[3].Range = 1400.f;  SkillAimSpecs[3].Width = 260.f;   // R
 }
 
 void AFWPlayerController::MoveToWorldLocation(const FVector& WorldLocation)
@@ -168,6 +174,22 @@ void AFWPlayerController::BeginPlay()
 		}
 	}
 
+	/** 스킬 범위 표시 액터 스폰 (로컬 컨트롤러만) **/
+	if (IsLocalController() && GetWorld()) {
+		if (!SkillIndicatorClass) {
+			SkillIndicatorClass = AFWSkillIndicator::StaticClass();
+		}
+
+		FActorSpawnParameters IndicatorParams;
+		IndicatorParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		IndicatorParams.Owner = this;
+
+		SkillIndicator = GetWorld()->SpawnActor<AFWSkillIndicator>(SkillIndicatorClass, FVector::ZeroVector, FRotator::ZeroRotator, IndicatorParams);
+		if (!SkillIndicator) {
+			UE_LOG(LogTemp, Error, TEXT("[FW] 스킬 범위 표시 액터 스폰 실패"));
+		}
+	}
+
 	if (UFWNetworkSubsystem* Net = GetNetwork())
 	{
 		Net->OnLoginResult.AddDynamic(this, &AFWPlayerController::HandleLoginResult);
@@ -247,10 +269,16 @@ void AFWPlayerController::SetupInputComponent()
 	// 에셋이 지정되지 않았으면(로드 실패 등) 바인딩을 건너뛰어 크래시를 방지한다.
 	if (MoveAction)   { EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AFWPlayerController::OnMoveTriggered); }  // 우클릭 이동
 	if (ZoomAction)   { EIC->BindAction(ZoomAction, ETriggerEvent::Triggered, this, &AFWPlayerController::OnZoom); }           // 마우스 휠 줌
-	if (SkillQAction) { EIC->BindAction(SkillQAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillQ); }
-	if (SkillWAction) { EIC->BindAction(SkillWAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillW); }
-	if (SkillEAction) { EIC->BindAction(SkillEAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillE); }
-	if (SkillRAction) { EIC->BindAction(SkillRAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillR); }
+	if (SkillQAction) { EIC->BindAction(SkillQAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillPressed, 0); }
+	if (SkillWAction) { EIC->BindAction(SkillWAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillPressed, 1); }
+	if (SkillEAction) { EIC->BindAction(SkillEAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillPressed, 2); }
+	if (SkillRAction) { EIC->BindAction(SkillRAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillPressed, 3); }
+
+	// 스킬 키를 떼는 순간 (누르고 떼기 방식의 발동 시점)
+	if (SkillQAction) { EIC->BindAction(SkillQAction, ETriggerEvent::Completed, this, &AFWPlayerController::OnSkillReleased, 0); }
+	if (SkillWAction) { EIC->BindAction(SkillWAction, ETriggerEvent::Completed, this, &AFWPlayerController::OnSkillReleased, 1); }
+	if (SkillEAction) { EIC->BindAction(SkillEAction, ETriggerEvent::Completed, this, &AFWPlayerController::OnSkillReleased, 2); }
+	if (SkillRAction) { EIC->BindAction(SkillRAction, ETriggerEvent::Completed, this, &AFWPlayerController::OnSkillReleased, 3); }
 
 	// 리센터 바인딩
 	if (RecenterCameraAction) {
@@ -277,6 +305,7 @@ void AFWPlayerController::PlayerTick(float DeltaTime)
 	DrawMoveMarker();
 	DrawMovePath();
 	UpdateEdgePanCamera(DeltaTime);	// 카메라 갱신
+	UpdateSkillAim();	// 스킬 범위 표시 갱신
 }
 
 // ----------------------------------------------------------------------------
@@ -666,6 +695,170 @@ void AFWPlayerController::ActivateSkill(int32 SkillIndex)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 4.0f, Color,
 			FString::Printf(TEXT(">> [%s] 스킬"), Name));
+	}
+}
+
+// ----------------------------------------------------------------------------
+// 스킬 조준 (범위 표시)
+// ----------------------------------------------------------------------------
+void AFWPlayerController::OnSkillPressed(const FInputActionValue& /*Value*/, int32 SkillIndex)
+{
+	if (IsChatInputActive()) { return; }   // 채팅 입력 중에는 스킬 차단
+
+	BeginSkillAim(SkillIndex);
+}
+
+void AFWPlayerController::OnSkillReleased(const FInputActionValue& /*Value*/, int32 SkillIndex)
+{
+	if (AimingSkillIndex != SkillIndex) {
+		return;
+	}
+
+	// 채팅창이 열리면서 눌려 있던 키가 풀린 경우는 발동하지 않고 취소
+	if (IsChatInputActive()) {
+		EndSkillAim();
+		return;
+	}
+
+	// 누르고 떼기 방식: 조준하던 키를 떼는 순간 발동
+	if (SkillCastMode == EFWSkillCastMode::HoldAndRelease) {
+		CommitSkillAim();
+	}
+
+	// 누르고 클릭 방식: 조준하던 키를 떼면 발동하지 않고 범위 표시만 끔
+	if (SkillCastMode == EFWSkillCastMode::HoldAndClick) {
+		EndSkillAim();
+	}
+}
+
+void AFWPlayerController::FlushPressedKeys()
+{
+	// 창이나 뷰포트가 포커스를 잃으면(Alt+Tab, 채팅창 열림 등) 엔진이 눌려 있던 키를 강제로 뗀 것으로 처리한다.
+	// 스킬 발동으로 이어지지 않도록 조준을 먼저 취소
+	EndSkillAim();
+
+	Super::FlushPressedKeys();
+}
+
+void AFWPlayerController::BeginSkillAim(int32 SkillIndex)
+{
+	if (SkillIndex < 0 || SkillIndex >= static_cast<int32>(UE_ARRAY_COUNT(SkillAimSpecs))) {
+		return;
+	}
+
+	// 다른 스킬을 조준하던 중이면 그쪽은 취소
+	EndSkillAim();
+
+	const bool bHasAim = UpdateSkillAimFromCursor();
+
+	// 범위 표시를 쓰지 않는 스킬이거나 표시할 수 없는 상황이면 기존처럼 누르는 즉시 발동
+	if (!bHasAim || !SkillIndicator || !SkillAimSpecs[SkillIndex].bShowIndicator) {
+		FireSkill(SkillIndex);
+		return;
+	}
+
+	AimingSkillIndex = SkillIndex;
+	UpdateSkillAim();   // 키를 누른 프레임부터 바로 보이도록
+}
+
+void AFWPlayerController::CommitSkillAim()
+{
+	if (!IsAimingSkill()) {
+		return;
+	}
+
+	const int32 SkillIndex = AimingSkillIndex;
+
+	UpdateSkillAimFromCursor();   // 발동 직전의 커서 위치로 방향 확정
+	EndSkillAim();                // 범위 표시 끄기 (조준 결과는 남겨 둠)
+
+	FireSkill(SkillIndex);
+}
+
+void AFWPlayerController::EndSkillAim()
+{
+	AimingSkillIndex = INDEX_NONE;
+
+	if (SkillIndicator) {
+		SkillIndicator->HideIndicator();
+	}
+}
+
+void AFWPlayerController::UpdateSkillAim()
+{
+	if (!IsAimingSkill()) {
+		return;
+	}
+
+	// 조준 도중 채팅이 열리거나 캐릭터, 표시 액터가 없어지면 취소
+	if (IsChatInputActive() || !SkillIndicator || !UpdateSkillAimFromCursor()) {
+		EndSkillAim();
+		return;
+	}
+
+	// 누르면 표시 방식: 좌클릭 = 발동, 우클릭 = 취소 (우클릭 이동은 그대로 수행됨)
+	if (SkillCastMode == EFWSkillCastMode::PressAndClick) {
+		if (WasInputKeyJustPressed(EKeys::RightMouseButton)) {
+			EndSkillAim();
+			return;
+		}
+		if (WasInputKeyJustPressed(EKeys::LeftMouseButton)) {
+			CommitSkillAim();
+			return;
+		}
+	}
+
+	// 누르고 클릭 방식: 키를 누르고 있는 동안 좌클릭 = 발동 (키를 떼면 OnSkillReleased 에서 취소, 우클릭 이동은 그대로)
+	if (SkillCastMode == EFWSkillCastMode::HoldAndClick && WasInputKeyJustPressed(EKeys::LeftMouseButton)) {
+		CommitSkillAim();
+		return;
+	}
+
+	const FFWSkillAimSpec& Spec = SkillAimSpecs[AimingSkillIndex];
+	SkillIndicator->ShowLine(SkillAimOrigin, SkillAimDirection, Spec.Range, Spec.Width);
+}
+
+bool AFWPlayerController::UpdateSkillAimFromCursor()
+{
+	const APawn* MyPawn = GetPawn();
+	if (!MyPawn) {
+		return false;
+	}
+
+	// 시작점 = 캐릭터 발밑
+	SkillAimOrigin = MyPawn->GetActorLocation() - FVector(0.f, 0.f, MyPawn->GetSimpleCollisionHalfHeight());
+
+	// 방향 = 캐릭터 -> 커서가 가리키는 지면 (수평 성분만). 커서 아래에 지면이 없으면 캐릭터가 보는 방향
+	FVector Direction = MyPawn->GetActorForwardVector().GetSafeNormal2D();
+
+	FHitResult Hit;
+	if (GetHitResultUnderCursor(MoveTraceChannel, /*bTraceComplex=*/false, Hit) && Hit.bBlockingHit) {
+		const FVector ToCursor = (Hit.ImpactPoint - MyPawn->GetActorLocation()).GetSafeNormal2D();
+		if (!ToCursor.IsNearlyZero()) {
+			Direction = ToCursor;
+		}
+	}
+
+	// 방향을 구하지 못한 프레임에는 직전 방향 유지
+	if (!Direction.IsNearlyZero()) {
+		SkillAimDirection = Direction;
+	}
+
+	return true;
+}
+
+void AFWPlayerController::FireSkill(int32 SkillIndex)
+{
+	UE_LOG(LogTemp, Log, TEXT("[FW] 스킬 조준 확정: index=%d 시작=%s 방향=%s"),
+		SkillIndex, *SkillAimOrigin.ToString(), *SkillAimDirection.ToString());
+
+	// 기존 스킬 콜백을 그대로 발동 함수로 사용
+	switch (SkillIndex) {
+	case 0: OnSkillQ(FInputActionValue()); break;
+	case 1: OnSkillW(FInputActionValue()); break;
+	case 2: OnSkillE(FInputActionValue()); break;
+	case 3: OnSkillR(FInputActionValue()); break;
+	default: break;
 	}
 }
 
