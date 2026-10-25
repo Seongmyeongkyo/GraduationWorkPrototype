@@ -10,7 +10,7 @@ public class Framework : ModuleRules
 	
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "AIModule", "NavigationSystem", "AnimGraphRuntime", "UMG", "Slate", "SlateCore" });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "Sockets", "Networking", "ImageCore" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Sockets", "Networking", "ImageCore", "RenderCore", "RHI" });
 
 		// 승인된 HTML과 동일한 PNG를 사용. 패키징에서도 색상 보정/잎 표시가 가능하도록 포함합니다.
 		// 웹 브라우저나 로컬 HTTP 서버는 게임 실행에 필요하지 않습니다.

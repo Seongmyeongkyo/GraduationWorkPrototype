@@ -14,8 +14,42 @@ class UFWStatusBarWidget;
 class UFWChatWidget;
 class UFWNetworkSubsystem;
 class AFWCharacter;
+class AFWSkillIndicator;
 
 enum class EFWChatChannel : uint8;
+
+/** 스킬 범위 표시를 띄우고 발동하는 방식 **/
+UENUM(BlueprintType)
+enum class EFWSkillCastMode : uint8
+{
+	/** 스킬 키를 누르고 있는 동안 범위 표시, 키를 떼면 발동 **/
+	HoldAndRelease,
+
+	/** 스킬 키를 누르면 범위 표시, 마우스 좌클릭시 발동, 키를 떼면 발동 하지 않고 표시만 끔**/
+	HoldAndClick,
+
+	/** 스킬 키를 누르면 범위 표시, 좌클릭으로 발동 / 우클릭으로 취소 **/
+	PressAndClick
+};
+
+/** 스킬 하나의 범위 표시 설정 **/
+USTRUCT(BlueprintType)
+struct FFWSkillAimSpec
+{
+	GENERATED_BODY()
+
+	/** false면 범위 표시 없이 키를 누르는 즉시 발동 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill")
+	bool bShowIndicator = true;
+
+	/** 스킬이 나아가는 거리 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill")
+	float Range = 1000.f;
+
+	/** 스킬 폭 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill")
+	float Width = 120.f;
+};
 
 UCLASS()
 class FRAMEWORK_API AFWPlayerController : public APlayerController
@@ -28,6 +62,9 @@ public:
 	/** MiniMap 클릭 등 외부에서 특정 월드 지점으로 이동 요청 **/
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	void MoveToWorldLocation(const FVector& WorldLocation);
+
+	/** 포커스를 잃어 눌려 있던 키가 강제로 풀릴 때 호출됨. 조준 중이던 스킬은 발동하지 않고 취소 **/
+	virtual void FlushPressedKeys() override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<class UFWMiniMapWidget> MiniMapWidgetClass;
@@ -143,6 +180,19 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera")
 	bool bCameraLockedToPawn = false;
 
+	// ---- 스킬 조준 (범위 표시) ----
+	/** 범위 표시를 띄우고 발동하는 방식 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill")
+	EFWSkillCastMode SkillCastMode = EFWSkillCastMode::HoldAndClick;
+
+	/** 스킬별 범위 표시 설정 (0~3 = Q/W/E/R) **/
+	UPROPERTY(EditAnywhere, Category = "Skill")
+	FFWSkillAimSpec SkillAimSpecs[4];
+
+	/** 스폰할 범위 표시 액터 클래스 (미지정 시 AFWSkillIndicator 기본 사용) **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill")
+	TSubclassOf<AFWSkillIndicator> SkillIndicatorClass;
+
 	// ---- 입력 콜백 ----
 	void OnMoveTriggered(const FInputActionValue& Value);
 	void OnZoom(const FInputActionValue& Value);
@@ -150,6 +200,8 @@ protected:
 	void OnSkillW(const FInputActionValue& Value);
 	void OnSkillE(const FInputActionValue& Value);
 	void OnSkillR(const FInputActionValue& Value);
+	void OnSkillPressed(const FInputActionValue& Value, int32 SkillIndex);    // 스킬 키 누름 -> 범위 표시 시작
+	void OnSkillReleased(const FInputActionValue& Value, int32 SkillIndex);   // 스킬 키 뗌 -> (누르고 떼기 방식) 발동
 	void OnRecenterCamera(const FInputActionValue& Value);	// 리센터 스페이스바 (기존 Started)
 	void OnRecenterCameraReleased(const FInputActionValue& Value); // 리센터 스페이스바 (holded)
 	void OnCameraLockToggle(const FInputActionValue& Value);    // 카메라 고정 토글
@@ -163,6 +215,10 @@ protected:
 	void HandleChatClosed();
 
 	virtual void ActivateSkill(int32 SkillIndex);
+
+	/** 마지막 조준 결과 (발밑 시작점, 수평 방향). 스킬이 나아갈 방향이 필요할 때 사용 **/
+	const FVector& GetSkillAimOrigin() const { return SkillAimOrigin; }
+	const FVector& GetSkillAimDirection() const { return SkillAimDirection; }
 
 	// ---- 네트워크 ----
 	UPROPERTY(EditAnywhere, Category = "Network")
@@ -267,6 +323,37 @@ private:
 
 	/** 채팅이 닫힌 다음 틱에 게임 뷰포트 포커스 복구 **/
 	void RestoreGameViewportFocus();
+
+	// ---- 스킬 조준 (범위 표시) ----
+	/** 조준 시작: 범위 표시를 띄움 (표시를 쓰지 않는 스킬은 즉시 발동) **/
+	void BeginSkillAim(int32 SkillIndex);
+
+	/** 조준 확정: 범위 표시를 끄고 스킬 발동 **/
+	void CommitSkillAim();
+
+	/** 조준 종료: 범위 표시만 끔 (취소) **/
+	void EndSkillAim();
+
+	/** 조준 중 범위 표시 갱신 (PlayerTick 에서 호출) **/
+	void UpdateSkillAim();
+
+	/** 캐릭터 발밑 -> 커서가 가리키는 지면 방향으로 조준 시작점, 방향 갱신. 캐릭터가 없으면 false **/
+	bool UpdateSkillAimFromCursor();
+
+	/** 기존 스킬 콜백(OnSkillQ~R)을 발동 함수로 호출 **/
+	void FireSkill(int32 SkillIndex);
+
+	bool IsAimingSkill() const { return AimingSkillIndex != INDEX_NONE; }
+
+	/** 조준 중인 스킬 (0~3 = Q/W/E/R, INDEX_NONE = 조준 중 아님) **/
+	int32 AimingSkillIndex = INDEX_NONE;
+
+	FVector SkillAimOrigin = FVector::ZeroVector;
+	FVector SkillAimDirection = FVector::ForwardVector;
+
+	/** 컨트롤러가 소유하는 스킬 범위 표시 액터 **/
+	UPROPERTY()
+	TObjectPtr<AFWSkillIndicator> SkillIndicator;
 
 	/** 컨트롤러가 소유하는 카메라 리그 **/
 	UPROPERTY()
