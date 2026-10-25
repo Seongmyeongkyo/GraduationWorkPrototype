@@ -1,5 +1,6 @@
 ﻿#include "FWLoginWidget.h"
 #include "FWLoginPlayerController.h"
+#include "FWLoginWindLayer.h"
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Components/Border.h"
@@ -99,6 +100,7 @@ void UFWLoginWidget::BuildMenu()
 	UOverlay* Root = WidgetTree->ConstructWidget<UOverlay>();
 	Root->SetClipping(EWidgetClipping::ClipToBounds);
 	WidgetTree->RootWidget = Root;
+	// 원본 배경 이미지는 고정. 움직임은 아래 별도 투명 잎 레이어에만 적용합니다.
 	UScaleBox* BackgroundCover = WidgetTree->ConstructWidget<UScaleBox>();
 	BackgroundCover->SetStretch(EStretch::ScaleToFill);
 	BackgroundCover->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -106,6 +108,7 @@ void UFWLoginWidget::BuildMenu()
 	BackgroundSlot->SetHorizontalAlignment(HAlign_Fill);
 	BackgroundSlot->SetVerticalAlignment(VAlign_Fill);
 	UImage* Background = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("LoginBackground"));
+	Background->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (UTexture2D* Texture = BackgroundTexture.LoadSynchronous())
 	{
 		Background->SetBrushFromTexture(Texture, true);
@@ -116,6 +119,14 @@ void UFWLoginWidget::BuildMenu()
 		UE_LOG(LogTemp, Warning, TEXT("[FWLogin] Background texture unavailable: %s"), *BackgroundTexture.ToString());
 	}
 	BackgroundCover->SetContent(Background);
+
+	// 승인된 HTML 미리보기의 잎 레이어. 배경 이미지나 로그인 패널을 움직이지 않습니다.
+	UFWLoginWindLayer* Wind = WidgetTree->ConstructWidget<UFWLoginWindLayer>(UFWLoginWindLayer::StaticClass(), TEXT("LoginWindLayer"));
+	Wind->SetVisibility(ESlateVisibility::HitTestInvisible);
+	Wind->SetClipping(EWidgetClipping::ClipToBounds);
+	UOverlaySlot* WindSlot = Root->AddChildToOverlay(Wind);
+	WindSlot->SetHorizontalAlignment(HAlign_Fill);
+	WindSlot->SetVerticalAlignment(VAlign_Fill);
 
 	// Keep the card's proportions and safe margins at different viewport sizes.
 	UScaleBox* UIScale = WidgetTree->ConstructWidget<UScaleBox>();
