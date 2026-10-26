@@ -22,9 +22,6 @@ enum class EFWChatChannel : uint8;
 UENUM(BlueprintType)
 enum class EFWSkillCastMode : uint8
 {
-	/** 스킬 키를 누르고 있는 동안 범위 표시, 키를 떼면 발동 **/
-	HoldAndRelease,
-
 	/** 스킬 키를 누르면 범위 표시, 마우스 좌클릭시 발동, 키를 떼면 발동 하지 않고 표시만 끔**/
 	HoldAndClick,
 

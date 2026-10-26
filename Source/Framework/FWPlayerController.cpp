@@ -721,11 +721,6 @@ void AFWPlayerController::OnSkillReleased(const FInputActionValue& /*Value*/, in
 		return;
 	}
 
-	// 누르고 떼기 방식: 조준하던 키를 떼는 순간 발동
-	if (SkillCastMode == EFWSkillCastMode::HoldAndRelease) {
-		CommitSkillAim();
-	}
-
 	// 누르고 클릭 방식: 조준하던 키를 떼면 발동하지 않고 범위 표시만 끔
 	if (SkillCastMode == EFWSkillCastMode::HoldAndClick) {
 		EndSkillAim();
