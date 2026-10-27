@@ -1,0 +1,78 @@
+// Weathered rock / turf authoring source, embedded in the Unreal materials.
+// P is world centimeters. SURFACE_TYPE: 0 rock, 1 turf.
+// OUTPUT_MODE: 0 base color, 1 world-space normal, 2 roughness.
+// Material parameter controls: DetailStrength, CrackStrength, MossAmount.
+struct ForestSurface {
+ float hash(float2 p) { return frac(sin(dot(p,float2(127.1,311.7)))*43758.5453); }
+ float2 hash2(float2 p) { return frac(sin(float2(dot(p,float2(127.1,311.7)),dot(p,float2(269.5,183.3))))*43758.5453); }
+ float noise(float2 p) {
+  float2 i=floor(p),f=frac(p);f=f*f*(3-2*f);
+  return lerp(lerp(hash(i),hash(i+float2(1,0)),f.x),lerp(hash(i+float2(0,1)),hash(i+1),f.x),f.y);
+ }
+ float projected(float3 q,float3 w,float scale) {
+  return noise(q.yz*scale+3.1)*w.x+noise(q.xz*scale-7.3)*w.y+noise(q.xy*scale+11.7)*w.z;
+ }
+ float2 cells(float2 p) {
+  float2 tile=floor(p),f=frac(p);float a=10,b=10;
+  [unroll] for(int y=-1;y<=1;y++) {
+   [unroll] for(int x=-1;x<=1;x++) {
+    float2 cell=float2(x,y);float2 d=cell+lerp(.18,.82,hash2(tile+cell))-f;
+    float v=dot(d,d);b=max(a,min(b,v));a=min(a,v);
+   }
+  }
+  return float2(sqrt(a),max(0,sqrt(b)-sqrt(a)));
+ }
+};
+ForestSurface s;
+float3 N=normalize(Parameters.TangentToWorld[2]);
+float3 q=P*.01;
+float3 w=pow(abs(N),6);w/=max(dot(w,1),.001);
+float macro=s.projected(q,w,.75);
+float medium=s.projected(q,w,5.7);
+float grit=s.projected(q,w,39.0);
+float aa=1-saturate(length(fwidth(q))*14);
+float height;
+float3 color;
+float roughness;
+#if SURFACE_TYPE == 1
+ float soil=s.noise(q.xy*2.8+13.2);
+ float tufts=s.noise(q.xy*16.0);
+ float chips=s.noise(q.xy*62.0);
+ float bare=smoothstep(.67,.80,soil)*smoothstep(.34,.70,tufts);
+ float3 grass=lerp(float3(.095,.175,.026),float3(.205,.292,.049),saturate(macro*.45+tufts*.55));
+ float3 earth=lerp(float3(.19,.128,.062),float3(.285,.215,.105),medium);
+ color=lerp(grass,earth,bare*.7)*(1+(chips-.5)*.20*aa);
+ height=(tufts*.55+grit*.28+chips*.17)*.9*DetailStrength;
+ roughness=clamp(.89+(tufts-.5)*.08,.82,.96);
+#else
+ // Irregular fractures in three planes, without UV stretching at vertical walls.
+ float2 cx=s.cells(q.yz*1.4+float2(.32,.71));
+ float2 cy=s.cells(q.xz*1.4+float2(1.13,.29));
+ float2 cz=s.cells(q.xy*1.4+float2(.61,2.17));
+ float edge=cx.y*w.x+cy.y*w.y+cz.y*w.z;
+ float weathering=smoothstep(.24,.70,s.projected(q,w,2.1));
+ float joint=(1-smoothstep(.006,.035,edge))*CrackStrength*weathering;
+ float seam=(1-smoothstep(.0,.065,edge))*CrackStrength*weathering;
+ float layer=sin(q.z*8.7+s.noise(q.xy*.5)*2.8)*.5+.5;
+ float3 stone=lerp(float3(.235,.240,.204),float3(.40,.393,.316),saturate(macro*.52+medium*.48));
+ stone*=1+(grit-.5)*.23*aa;
+ stone*=1-joint*.34-seam*.12;
+ float grow=s.noise(q.xy*3.4+q.z*.43);
+ float moss=smoothstep(.48,.85,N.z)*smoothstep(.47,.71,grow)*MossAmount;
+ float3 mossColor=lerp(float3(.105,.17,.028),float3(.19,.255,.047),grit);
+ color=lerp(stone,mossColor,moss);
+ height=(medium*2.0+grit*.42*aa+layer*.12-joint*.8-seam*.5)*DetailStrength;
+ roughness=lerp(.72+grit*.14,.94,moss);
+#endif
+#if OUTPUT_MODE == 1
+ // Surface gradient bump in world space. Both horizontal and vertical faces keep their relief.
+ float3 dx=ddx(P),dy=ddy(P);
+ float3 r1=cross(dy,N),r2=cross(N,dx);
+ float det=dot(dx,r1);
+ float3 gradient=(r1*ddx(height)+r2*ddy(height))*sign(det)/max(abs(det),1e-4);
+ return normalize(N-gradient);
+#elif OUTPUT_MODE == 2
+ return roughness;
+#else
+ return color;
+#endif

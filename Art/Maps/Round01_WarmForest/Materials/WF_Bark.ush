@@ -1,0 +1,25 @@
+// World-space bark field. Inputs P (cm), ReliefStrength. OUTPUT_MODE: 0 color, 1 normal, 2 roughness.
+struct BarkSurface {
+ float hash(float2 p) {return frac(sin(dot(p,float2(127.1,311.7)))*43758.5453);}
+ float noise(float2 p) {
+  float2 i=floor(p),f=frac(p);f=f*f*(3-2*f);
+  return lerp(lerp(hash(i),hash(i+float2(1,0)),f.x),lerp(hash(i+float2(0,1)),hash(i+1),f.x),f.y);
+ }
+};
+BarkSurface b;float3 q=P*.01;float3 N=normalize(Parameters.TangentToWorld[2]);
+float warp=b.noise(float2(q.z*1.1,(q.x+q.y)*.55));
+float grooves=b.noise(q.xy*19+float2(warp*.55,q.z*.21));
+float scales=b.noise(float2((q.x+q.y)*13,q.z*7));
+float coarse=b.noise(q.xy*3+q.z*.07);
+float fissure=1-smoothstep(.20,.35,grooves);
+float height=(grooves*.70+scales*.15-fissure*.2)*ReliefStrength;
+#if OUTPUT_MODE == 1
+float3 dx=ddx(P),dy=ddy(P),r1=cross(dy,N),r2=cross(N,dx);float det=dot(dx,r1);
+float3 gradient=(r1*ddx(height)+r2*ddy(height))*sign(det)/max(abs(det),1e-4);
+return normalize(N-gradient);
+#elif OUTPUT_MODE == 2
+return .83+scales*.1;
+#else
+float3 color=lerp(float3(.095,.043,.016),float3(.23,.125,.045),saturate(coarse*.5+grooves*.5));
+return color*(1-fissure*.3);
+#endif

@@ -95,6 +95,10 @@ __pycache__/
 /Art/Maps/*/Validation.json
 /Art/Maps/*/Unreal_Import_Report.json
 
+# Local map renders, screenshots, and concept drafts (not runtime textures)
+/Art/Maps/**/Previews/
+/Art/Maps/**/Concepts/
+
 # Legacy locations for local work notes (new notes belong in .local-work)
 /Docs/WeeklyDevelopmentReview.md
 /Docs/MainMenu.md

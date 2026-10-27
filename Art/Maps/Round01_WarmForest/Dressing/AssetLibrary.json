@@ -1,0 +1,377 @@
+{
+  "SM_DF_Boulder_0": {
+    "group": "Macro",
+    "rx": 1.0209165811538696,
+    "ry": 0.6872683763504028,
+    "height_m": 0.8569927215576172,
+    "triangles": 3840,
+    "materials": [
+      "M_WF2_Rock",
+      "M_WF2_Grass"
+    ]
+  },
+  "SM_DF_Boulder_1": {
+    "group": "Macro",
+    "rx": 1.0123220682144165,
+    "ry": 0.6844400763511658,
+    "height_m": 0.8570106029510498,
+    "triangles": 3840,
+    "materials": [
+      "M_WF2_Rock",
+      "M_WF2_Grass"
+    ]
+  },
+  "SM_DF_Boulder_2": {
+    "group": "Macro",
+    "rx": 1.0224769115447998,
+    "ry": 0.6913466453552246,
+    "height_m": 0.8480920791625977,
+    "triangles": 3840,
+    "materials": [
+      "M_WF2_Rock",
+      "M_WF2_Grass"
+    ]
+  },
+  "SM_DF_Log_0": {
+    "group": "Macro",
+    "rx": 1.6279646158218384,
+    "ry": 0.7001845240592957,
+    "height_m": 1.199960708618164,
+    "triangles": 3122,
+    "materials": [
+      "M_WF2_Bark",
+      "M_DF_EndWood",
+      "M_DF_DarkWood",
+      "M_WF2_Grass"
+    ]
+  },
+  "SM_DF_Stump_0": {
+    "group": "Macro",
+    "rx": 0.7593661546707153,
+    "ry": 0.6599196791648865,
+    "height_m": 0.8758468627929688,
+    "triangles": 1200,
+    "materials": [
+      "M_WF2_Bark",
+      "M_DF_EndWood",
+      "M_DF_DarkWood"
+    ]
+  },
+  "SM_DF_Fern_0": {
+    "group": "Flora",
+    "rx": 0.6661467552185059,
+    "ry": 0.6576544642448425,
+    "height_m": 0.22190356254577637,
+    "triangles": 2240,
+    "materials": [
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2"
+    ]
+  },
+  "SM_DF_Log_1": {
+    "group": "Macro",
+    "rx": 1.8535279035568237,
+    "ry": 0.7001845240592957,
+    "height_m": 1.199960708618164,
+    "triangles": 3122,
+    "materials": [
+      "M_WF2_Bark",
+      "M_DF_EndWood",
+      "M_DF_DarkWood",
+      "M_WF2_Grass"
+    ]
+  },
+  "SM_DF_Stump_1": {
+    "group": "Macro",
+    "rx": 0.9508277177810669,
+    "ry": 0.8260378241539001,
+    "height_m": 1.0508309602737427,
+    "triangles": 1200,
+    "materials": [
+      "M_WF2_Bark",
+      "M_DF_EndWood",
+      "M_DF_DarkWood"
+    ]
+  },
+  "SM_DF_Fern_1": {
+    "group": "Flora",
+    "rx": 0.7756091356277466,
+    "ry": 0.7566447257995605,
+    "height_m": 0.30590251088142395,
+    "triangles": 2240,
+    "materials": [
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2"
+    ]
+  },
+  "SM_DF_Flowers_0": {
+    "group": "Flora",
+    "rx": 0.5643761157989502,
+    "ry": 0.6161919832229614,
+    "height_m": 0.4426615834236145,
+    "triangles": 960,
+    "materials": [
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2",
+      "M_DF_WhitePetal",
+      "M_DF_Pollen"
+    ]
+  },
+  "SM_DF_Flowers_1": {
+    "group": "Flora",
+    "rx": 0.5643932819366455,
+    "ry": 0.6724414825439453,
+    "height_m": 0.4763025939464569,
+    "triangles": 960,
+    "materials": [
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2",
+      "M_DF_YellowPetal",
+      "M_DF_Pollen"
+    ]
+  },
+  "SM_DF_Flowers_2": {
+    "group": "Flora",
+    "rx": 0.6670482754707336,
+    "ry": 0.6513447761535645,
+    "height_m": 0.4624558985233307,
+    "triangles": 960,
+    "materials": [
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2",
+      "M_DF_LavenderPetal",
+      "M_DF_Pollen"
+    ]
+  },
+  "SM_DF_Shrub_0": {
+    "group": "Flora",
+    "rx": 0.7038775682449341,
+    "ry": 0.7174731492996216,
+    "height_m": 0.7778464555740356,
+    "triangles": 680,
+    "materials": [
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2",
+      "M_WF2_Leaf_3"
+    ]
+  },
+  "SM_DF_Shrub_1": {
+    "group": "Flora",
+    "rx": 0.7195042967796326,
+    "ry": 0.7041736245155334,
+    "height_m": 0.7815096378326416,
+    "triangles": 680,
+    "materials": [
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2",
+      "M_WF2_Leaf_3",
+      "M_WF2_Leaf_0"
+    ]
+  },
+  "SM_DF_Roots": {
+    "group": "Macro",
+    "rx": 0.8024059534072876,
+    "ry": 0.7963253259658813,
+    "height_m": 0.15997512638568878,
+    "triangles": 152,
+    "materials": [
+      "M_WF2_Bark"
+    ]
+  },
+  "SM_DF_AwningSet": {
+    "group": "Macro",
+    "rx": 1.9727962017059326,
+    "ry": 1.2702993154525757,
+    "height_m": 2.0450000762939453,
+    "triangles": 4592,
+    "materials": [
+      "M_DF_Wood",
+      "M_DF_Canvas",
+      "M_DF_TealCanvas",
+      "M_DF_Strap",
+      "M_WF2_Bark",
+      "M_DF_EndWood",
+      "M_DF_Rattan",
+      "M_DF_DarkWood",
+      "M_DF_Ember",
+      "M_DF_Metal"
+    ]
+  },
+  "SM_DF_SupplyCache_0": {
+    "group": "Macro",
+    "rx": 0.9015583992004395,
+    "ry": 1.0709999799728394,
+    "height_m": 1.127500057220459,
+    "triangles": 5868,
+    "materials": [
+      "M_DF_Wood",
+      "M_DF_EndWood",
+      "M_DF_Rattan",
+      "M_DF_DarkWood",
+      "M_DF_Ember",
+      "M_DF_Metal",
+      "M_DF_Canvas",
+      "M_DF_Strap",
+      "M_DF_TealCanvas"
+    ]
+  },
+  "SM_DF_SupplyCache_1": {
+    "group": "Macro",
+    "rx": 0.9015583992004395,
+    "ry": 1.2599999904632568,
+    "height_m": 1.127500057220459,
+    "triangles": 6216,
+    "materials": [
+      "M_DF_Wood",
+      "M_DF_EndWood",
+      "M_DF_Rattan",
+      "M_DF_DarkWood",
+      "M_DF_Ember",
+      "M_DF_Metal"
+    ]
+  },
+  "SM_DF_Bench": {
+    "group": "Macro",
+    "rx": 0.824999988079071,
+    "ry": 0.23000000417232513,
+    "height_m": 0.5074999928474426,
+    "triangles": 192,
+    "materials": [
+      "M_DF_Wood",
+      "M_WF2_Bark"
+    ]
+  },
+  "SM_DF_Outcrop_0": {
+    "group": "Macro",
+    "rx": 1.8755558729171753,
+    "ry": 1.4297879934310913,
+    "height_m": 1.8009945154190063,
+    "triangles": 9040,
+    "materials": [
+      "M_WF2_Rock",
+      "M_WF2_Grass",
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2"
+    ]
+  },
+  "SM_DF_Outcrop_1": {
+    "group": "Macro",
+    "rx": 1.698523998260498,
+    "ry": 1.43295156955719,
+    "height_m": 1.688082218170166,
+    "triangles": 9040,
+    "materials": [
+      "M_WF2_Rock",
+      "M_WF2_Grass",
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2"
+    ]
+  },
+  "SM_DF_Outcrop_2": {
+    "group": "Macro",
+    "rx": 1.8283015489578247,
+    "ry": 1.431593656539917,
+    "height_m": 1.7002031803131104,
+    "triangles": 9040,
+    "materials": [
+      "M_WF2_Rock",
+      "M_WF2_Grass",
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2"
+    ]
+  },
+  "SM_DF_Understory_0": {
+    "group": "Macro",
+    "rx": 1.8198784589767456,
+    "ry": 1.617692470550537,
+    "height_m": 1.811591625213623,
+    "triangles": 4312,
+    "materials": [
+      "M_WF2_Bark",
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2",
+      "M_WF2_Leaf_3"
+    ]
+  },
+  "SM_DF_Understory_1": {
+    "group": "Macro",
+    "rx": 1.8067946434020996,
+    "ry": 1.6240897178649902,
+    "height_m": 1.8339449167251587,
+    "triangles": 4312,
+    "materials": [
+      "M_WF2_Bark",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2",
+      "M_WF2_Leaf_3",
+      "M_WF2_Leaf_0"
+    ]
+  },
+  "SM_DF_Understory_2": {
+    "group": "Macro",
+    "rx": 1.8294239044189453,
+    "ry": 1.6374359130859375,
+    "height_m": 1.846834421157837,
+    "triangles": 4312,
+    "materials": [
+      "M_WF2_Bark",
+      "M_WF2_Leaf_2",
+      "M_WF2_Leaf_3",
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1"
+    ]
+  },
+  "SM_DF_FallenCrown": {
+    "group": "Macro",
+    "rx": 2.2623679637908936,
+    "ry": 1.6623544692993164,
+    "height_m": 1.199960708618164,
+    "triangles": 3778,
+    "materials": [
+      "M_WF2_Bark",
+      "M_DF_EndWood",
+      "M_DF_DarkWood",
+      "M_WF2_Grass",
+      "M_WF2_Leaf_0",
+      "M_WF2_Leaf_1",
+      "M_WF2_Leaf_2"
+    ]
+  },
+  "SM_DF_CampMarker": {
+    "group": "Macro",
+    "rx": 3.6163430213928223,
+    "ry": 3.5299551486968994,
+    "height_m": 1.7599999904632568,
+    "triangles": 12004,
+    "materials": [
+      "M_WF2_Rock",
+      "M_WF2_Bark",
+      "M_DF_Wood",
+      "M_DF_EndWood"
+    ]
+  },
+  "SM_DF_CampMarker_Open": {
+    "group": "Macro",
+    "rx": 3.518742084503174,
+    "ry": 3.600046157836914,
+    "height_m": 0.5142605304718018,
+    "triangles": 7776,
+    "materials": [
+      "M_WF2_Rock",
+      "M_WF2_Grass",
+      "M_WF2_Bark",
+      "M_DF_EndWood",
+      "M_DF_DarkWood"
+    ]
+  }
+}
