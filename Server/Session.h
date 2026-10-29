@@ -21,6 +21,8 @@ public:
     float m_mp;         // 서버가 관리 (스킬 사용 시 차감, 1초마다 회복)
     int32_t m_exp;      // C2S_GetExp로 받은 양의 누적
     int m_team;         // 0 또는 1. 접속 시 랜덤 배정 (임시, GameServer.cpp의 PickTeam)
+    uint8_t m_bush;     // 들어가 있는 부시 번호 (0 = 부시 밖)
+    bool m_sees[MAX_PLAYERS]; // 이 플레이어 화면에 각 플레이어가 보이는지 (마지막으로 알려준 상태)
     std::string m_ip;   // 로그용
 
     // 채팅 도배 제한용
@@ -57,6 +59,10 @@ public:
     void send_chat(int sender_id, uint8_t channel, const char* message);
     bool allow_chat(); // 도배 제한에 걸리지 않았으면 true (호출 횟수를 셈)
 
+    // 부시(은신)
+    bool can_see(const SESSION& target) const;
+    void send_visibility(int target_id, bool visible);
+
     void process_packet(unsigned char* p);
 };
 
@@ -64,6 +70,10 @@ extern std::array<SESSION, MAX_PLAYERS> clients;
 
 // 접속 중인 모두에게 시스템 채팅을 보낸다. g_clients_mutex를 잡은 상태에서 호출할 것.
 void broadcast_system_chat(const std::string& message);
+
+// 모든 (보는 사람, 대상) 쌍의 보임 여부를 다시 계산해서, 바뀐 쌍에만 S2C_PlayerVisibility를 보낸다.
+// 부시 상태가 바뀌거나 누가 로그인할 때 호출. g_clients_mutex를 잡은 상태에서 호출할 것.
+void refresh_visibility();
 
 // clients 접근 보호용. 워커 스레드가 완료 처리 1건마다 잡는다.
 // SESSION 메서드는 이미 잡힌 상태를 전제하므로 안에서 다시 잡으면 안 된다 (재귀 락이 아니라 데드락).

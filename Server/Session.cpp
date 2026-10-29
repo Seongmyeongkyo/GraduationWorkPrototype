@@ -37,6 +37,25 @@ void broadcast_system_chat(const std::string& message) {
         if (cl.m_is_connected) cl.send_chat(-1, CHAT_SYSTEM, message.c_str());
 }
 
+void refresh_visibility() {
+    for (auto& viewer : clients) {
+        // 로그인 전인 사람은 아직 다른 플레이어를 받지 않았으므로 건너뛴다 (로그인 직후 다시 호출됨)
+        if (!viewer.m_is_connected || viewer.m_username[0] == '\0') continue;
+        for (int t = 0; t < MAX_PLAYERS; ++t) {
+            const SESSION& target = clients[t];
+            if (!target.m_is_connected) {
+                viewer.m_sees[t] = true; // 빈 슬롯은 기본값으로 (다음에 들어올 사람을 위해)
+                continue;
+            }
+            const bool visible = viewer.can_see(target);
+            if (visible != viewer.m_sees[t]) {
+                viewer.m_sees[t] = visible;
+                viewer.send_visibility(t, visible);
+            }
+        }
+    }
+}
+
 SESSION::SESSION() {
     m_recv_over.m_iotype = IO_RECV;
     reset();
@@ -51,6 +70,8 @@ void SESSION::reset() {
     m_x = 0.f; m_y = 0.f; m_z = 0.f;
     m_hp = 100.f; m_mp = MAX_MANA; m_exp = 0;
     m_team = 0;
+    m_bush = 0;
+    for (bool& sees : m_sees) sees = true;
     m_ip.clear();
     m_chat_window_start = {};
     m_chat_count = 0;
@@ -215,6 +236,26 @@ void SESSION::send_chat(int sender_id, uint8_t channel, const char* message) {
     do_send(packet.size, reinterpret_cast<char*>(&packet));
 }
 
+bool SESSION::can_see(const SESSION& target) const {
+    if (target.m_id == m_id || target.m_team == m_team) return true; // 나와 아군은 항상 보임
+    if (target.m_bush == 0) return true;                             // 부시 밖
+    return m_bush == target.m_bush;                                  // 같은 부시 안에 있는 적만 보임
+}
+
+void SESSION::send_visibility(int target_id, bool visible) {
+    S2C_PlayerVisibility packet{};
+    packet.size = sizeof(S2C_PlayerVisibility);
+    packet.type = S2C_PLAYER_VISIBILITY;
+    packet.playerId = target_id;
+    packet.visible = visible ? 1 : 0;
+    if (visible) {
+        packet.x = clients[target_id].m_x;
+        packet.y = clients[target_id].m_y;
+        packet.z = clients[target_id].m_z;
+    }
+    do_send(packet.size, reinterpret_cast<char*>(&packet));
+}
+
 bool SESSION::allow_chat() {
     const auto now = std::chrono::steady_clock::now();
     if (m_chat_count == 0 || now - m_chat_window_start >= CHAT_LIMIT_WINDOW) {
@@ -243,6 +284,7 @@ void SESSION::process_packet(unsigned char* p) {
             send_add_player(other.m_id);
         }
         broadcast_system_chat(std::string(m_username) + "님이 접속했습니다.");
+        refresh_visibility(); // 부시에 숨어 있는 적은 방금 보낸 ADD_PLAYER 직후 바로 숨긴다
         break;
     }
     case C2S_MOVE: {
@@ -251,7 +293,7 @@ void SESSION::process_packet(unsigned char* p) {
         m_y = packet->y;
         m_z = packet->z;
         for (auto& cl : clients)
-            if (cl.m_is_connected) cl.send_move_packet(m_id);
+            if (cl.m_is_connected && cl.m_sees[m_id]) cl.send_move_packet(m_id); // 숨어 있으면 그 사람에게는 이동을 안 보냄
         break;
     }
     case C2S_ATTACK: {
@@ -327,6 +369,14 @@ void SESSION::process_packet(unsigned char* p) {
             if (team_only && cl.m_team != m_team) continue;
             cl.send_chat(m_id, packet->channel, message); // 보낸 본인도 받는다 (모든 클라이언트의 채팅 순서를 같게)
         }
+        break;
+    }
+    case C2S_BUSH_STATE: {
+        C2S_BushState* packet = reinterpret_cast<C2S_BushState*>(p);
+        if (packet->bushId == m_bush) break;
+        m_bush = packet->bushId;
+        Logger::Log("[BUSH] id=" + to_string(m_id) + " bush=" + to_string(static_cast<int>(m_bush)));
+        refresh_visibility();
         break;
     }
     default: break;

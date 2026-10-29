@@ -202,6 +202,7 @@ void AFWPlayerController::BeginPlay()
 		Net->OnSkillFailed.AddDynamic(this, &AFWPlayerController::HandleSkillFailed);
 		Net->OnManaUpdate.AddDynamic(this, &AFWPlayerController::HandleManaUpdate);
 		Net->OnChatReceived.AddDynamic(this, &AFWPlayerController::HandleChatReceived);
+		Net->OnPlayerVisibility.AddDynamic(this, &AFWPlayerController::HandlePlayerVisibility);
 		Net->OnConnectionFailed.AddDynamic(this, &AFWPlayerController::HandleConnectionFailed);
 
 		if (Net->ConnectToServer(ServerIP, ServerPort))
@@ -1085,4 +1086,46 @@ void AFWPlayerController::HandleChatReceived(int32 /*SenderId*/, int32 Channel, 
 		return;
 	}
 	ChatWidgetInstance->AddIncomingMessage(static_cast<EFWChatChannel>(Channel), SenderName, Message, bIsTeammate);
+}
+
+void AFWPlayerController::OnLocalPawnBushOverlap(int32 BushId, bool bEntered)
+{
+	if (bEntered)
+	{
+		OverlappingBushIds.AddUnique(BushId);
+	}
+	else
+	{
+		OverlappingBushIds.Remove(BushId);
+	}
+
+	const int32 CurrentBushId = OverlappingBushIds.Num() > 0 ? OverlappingBushIds.Last() : 0;
+	if (CurrentBushId == ReportedBushId)
+	{
+		return;
+	}
+
+	// Offline there's nobody to hide from, so only the server path does anything.
+	UFWNetworkSubsystem* Net = GetNetwork();
+	if (Net && Net->IsServerAuthoritative())
+	{
+		Net->SendBushState(CurrentBushId);
+		ReportedBushId = CurrentBushId;
+	}
+}
+
+void AFWPlayerController::HandlePlayerVisibility(int32 PlayerId, bool bVisible, FVector Location)
+{
+	if (TWeakObjectPtr<AFWCharacter>* Found = RemoteAvatars.Find(PlayerId))
+	{
+		if (AFWCharacter* Avatar = Found->Get())
+		{
+			Avatar->SetActorHiddenInGame(!bVisible);
+			if (bVisible)
+			{
+				// Moves weren't relayed while hidden - head for the latest destination.
+				Avatar->SetRemoteDestination(Location);
+			}
+		}
+	}
 }

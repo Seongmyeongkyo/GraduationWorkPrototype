@@ -32,7 +32,8 @@ namespace FWNet
 		S2C_PLAYER_ATTACK, S2C_PLAYER_SKILL, S2C_PLAYER_HIT, S2C_EXP_RESULT, S2C_ITEM_RESULT,
 		C2S_UPDATE_HEALTH,
 		S2C_MANA_UPDATE, S2C_SKILL_FAIL,
-		C2S_CHAT, S2C_CHAT
+		C2S_CHAT, S2C_CHAT,
+		C2S_BUSH_STATE, S2C_PLAYER_VISIBILITY
 	};
 
 #pragma pack(push, 1)
@@ -228,6 +229,28 @@ namespace FWNet
 		uint8_t isTeammate;
 		char senderName[MAX_NAME_LEN];
 		char message[CHAT_MAX_BYTES];
+	};
+
+	// ---- Bush (stealth) ----
+	// A player inside a bush is only visible to teammates and to enemies inside the same bush.
+
+	// Which bush the local pawn is in (0 = none). The client decides; the server trusts it.
+	struct C2S_BushState
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		uint8_t bushId;
+	};
+
+	// Per recipient: that player just became visible/hidden to us. Moves aren't relayed while
+	// hidden, so becoming visible carries the latest destination.
+	struct S2C_PlayerVisibility
+	{
+		uint8_t size;
+		PACKET_TYPE type;
+		int32_t playerId;
+		uint8_t visible;
+		float x, y, z;
 	};
 #pragma pack(pop)
 }

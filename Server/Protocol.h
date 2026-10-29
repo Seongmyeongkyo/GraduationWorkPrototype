@@ -40,7 +40,10 @@ enum PACKET_TYPE : uint8_t {
     S2C_MANA_UPDATE, S2C_SKILL_FAIL,
 
     // 채팅
-    C2S_CHAT, S2C_CHAT
+    C2S_CHAT, S2C_CHAT,
+
+    // 부시(은신)
+    C2S_BUSH_STATE, S2C_PLAYER_VISIBILITY
 };
 
 #pragma pack(push, 1) // 패딩 제거 (클라이언트와 바이트 배치 일치)
@@ -216,6 +219,26 @@ struct S2C_Chat {
     char senderName[MAX_NAME_LEN];
     char message[CHAT_MAX_BYTES];
 };
+
+// ---- 부시(은신) ----
+// 부시 안의 플레이어는 아군과 같은 부시 안의 적에게만 보인다.
+
+// 로컬 캐릭터가 들어가 있는 부시 번호 (0 = 부시 밖). 부시 판정은 클라이언트가 하고 서버는 믿는다.
+struct C2S_BushState {
+    uint8_t size;
+    PACKET_TYPE type;
+    uint8_t bushId;
+};
+
+// 받는 사람 화면에서 해당 플레이어가 보이게/안 보이게 됐음을 알린다.
+// 숨어 있는 동안에는 이동을 보내지 않으므로, 다시 보일 때 마지막 목적지를 같이 보낸다.
+struct S2C_PlayerVisibility {
+    uint8_t size;
+    PACKET_TYPE type;
+    int32_t playerId;
+    uint8_t visible;
+    float x, y, z;
+};
 #pragma pack(pop)
 
 // 클라이언트가 보낼 수 있는 패킷의 정확한 크기 (C2S 타입이 아니면 0).
@@ -232,6 +255,7 @@ constexpr int ExpectedC2SPacketSize(uint8_t type) {
     case C2S_GET_ITEM:      return sizeof(C2S_GetItem);
     case C2S_UPDATE_HEALTH: return sizeof(C2S_UpdateHealth);
     case C2S_CHAT:          return sizeof(C2S_Chat);
+    case C2S_BUSH_STATE:    return sizeof(C2S_BushState);
     default:                return 0;
     }
 }

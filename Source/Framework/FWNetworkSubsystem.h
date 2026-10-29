@@ -22,6 +22,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnExpResult, int32, Amount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnItemResult, int32, ItemId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FFWOnManaUpdate, float, CurrentMana, float, MaxMana);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnSkillFailed, int32, SkillIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FFWOnPlayerVisibility, int32, PlayerId, bool, bVisible, FVector, Location);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FFWOnChatReceived, int32, SenderId, int32, Channel, const FString&, SenderName, const FString&, Message, bool, bIsTeammate);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFWOnConnectionFailed, const FString&, Reason);
 
@@ -93,6 +94,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network")
 	void SendChat(int32 Channel, const FString& Message);
 
+	/** 0 = not in a bush. */
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void SendBushState(int32 BushId);
+
 	UPROPERTY(BlueprintAssignable, Category = "Network")
 	FFWOnLoginResult OnLoginResult;
 
@@ -134,6 +139,10 @@ public:
 	/** Every chat line from the server, including our own messages echoed back and system notices (SenderId = -1). */
 	UPROPERTY(BlueprintAssignable, Category = "Network")
 	FFWOnChatReceived OnChatReceived;
+
+	/** Another player became hidden (entered a bush we can't see into) or visible again. */
+	UPROPERTY(BlueprintAssignable, Category = "Network")
+	FFWOnPlayerVisibility OnPlayerVisibility;
 
 	/** Broadcast whenever a connection attempt fails, immediately or after the async handshake times out/errors. */
 	UPROPERTY(BlueprintAssignable, Category = "Network")

@@ -218,6 +218,15 @@ void UFWNetworkSubsystem::SendChat(int32 Channel, const FString& Message)
 	SendBytes(&Packet, Packet.size);
 }
 
+void UFWNetworkSubsystem::SendBushState(int32 BushId)
+{
+	C2S_BushState Packet{};
+	Packet.size = sizeof(C2S_BushState);
+	Packet.type = C2S_BUSH_STATE;
+	Packet.bushId = static_cast<uint8_t>(FMath::Clamp(BushId, 0, 255));
+	SendBytes(&Packet, Packet.size);
+}
+
 void UFWNetworkSubsystem::Tick(float DeltaTime)
 {
 	if (!Socket)
@@ -369,6 +378,12 @@ void UFWNetworkSubsystem::ProcessPacket(const uint8* Packet)
 			BoundedUtf8ToString(P->senderName, MAX_NAME_LEN),
 			BoundedUtf8ToString(P->message, CHAT_MAX_BYTES),
 			P->isTeammate != 0);
+		break;
+	}
+	case S2C_PLAYER_VISIBILITY:
+	{
+		const auto* P = reinterpret_cast<const S2C_PlayerVisibility*>(Packet);
+		OnPlayerVisibility.Broadcast(P->playerId, P->visible != 0, FVector(P->x, P->y, P->z));
 		break;
 	}
 	default:

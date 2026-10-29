@@ -63,6 +63,9 @@ public:
 	/** 포커스를 잃어 눌려 있던 키가 강제로 풀릴 때 호출됨. 조준 중이던 스킬은 발동하지 않고 취소 **/
 	virtual void FlushPressedKeys() override;
 
+	/** Called by AFWBushVolume when the local pawn enters/leaves a bush. */
+	void OnLocalPawnBushOverlap(int32 BushId, bool bEntered);
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<class UFWMiniMapWidget> MiniMapWidgetClass;
 
@@ -266,6 +269,9 @@ protected:
 	void HandleChatReceived(int32 SenderId, int32 Channel, const FString& SenderName, const FString& Message, bool bIsTeammate);
 
 	UFUNCTION()
+	void HandlePlayerVisibility(int32 PlayerId, bool bVisible, FVector Location);
+
+	UFUNCTION()
 	void HandleConnectionFailed(const FString& Reason);
 
 private:
@@ -361,4 +367,10 @@ private:
 
 	/** 다른 플레이어를 나타내는, 이 클라이언트가 직접 스폰한 아바타들. */
 	TMap<int32, TWeakObjectPtr<AFWCharacter>> RemoteAvatars;
+
+	/** Bushes the local pawn currently overlaps (where two bushes overlap, the last one entered counts). */
+	TArray<int32> OverlappingBushIds;
+
+	/** Last bush id sent to the server (0 = not in a bush). */
+	int32 ReportedBushId = 0;
 };
