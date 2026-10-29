@@ -1,5 +1,6 @@
 ﻿#include "FWLoginWidget.h"
 #include "FWLoginPlayerController.h"
+#include "UI/FWMenuFade.h"
 #include "FWLoginWindLayer.h"
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
@@ -343,7 +344,11 @@ void UFWLoginWidget::OnLoginClicked()
 	OnCredentialsChanged(FText::GetEmpty());
 	if (AFWLoginPlayerController* PC = GetOwningPlayer<AFWLoginPlayerController>())
 	{
-		if (PC->TryPrototypeLogin(UsernameInput->GetText().ToString())) return;
+		if (PC->IsPrototypeLoginEnabled())
+		{
+			PC->TryPrototypeLogin(UsernameInput->GetText().ToString());
+			return;
+		}
 	}
 	ShowStatus(LOCTEXT("AuthUnavailable", "로그인 서버 연동 준비 중입니다.\n로컬 플레이로 먼저 둘러보세요."));
 }
@@ -371,7 +376,12 @@ void UFWLoginWidget::SetStartingGame()
 	ControlsButton->SetIsEnabled(false);
 	QuitButton->SetIsEnabled(false);
 	StartLabel->SetText(LOCTEXT("Starting", "시작하는 중…"));
-	ShowStatus(LOCTEXT("Loading", "전장을 불러오고 있습니다."));
+	ShowStatus(LOCTEXT("LoadingLobby", "로비를 불러오고 있습니다."));
+}
+
+void UFWLoginWidget::SetTransitionOpacity(float Opacity)
+{
+	FWMenuFade::SetOpacity(WidgetTree, TransitionMask, Opacity);
 }
 
 void UFWLoginWidget::OnStartClicked()

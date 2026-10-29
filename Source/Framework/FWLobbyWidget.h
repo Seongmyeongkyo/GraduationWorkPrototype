@@ -13,6 +13,7 @@ class UTexture2D;
 class UWidget;
 class UImage;
 class UEditableTextBox;
+class UBorder;
 
 /** 메인 로비와 팀 로비. 승인된 시안의 PNG 스킨과 UMG 문자를 분리한다. */
 UCLASS(Config = Game)
@@ -29,6 +30,7 @@ public:
 	void ShowMatchComplete();
 	void HideMatchComplete();
 	void SetLocalNickname(const FString& Nickname);
+	void SetTransitionOpacity(float Opacity);
 	bool IsInTeamLobby() const { return bTeamLobby; }
 	bool IsInvitationOpen() const { return bInviteOpen; }
 	bool IsSearching() const { return bSearching; }
@@ -146,6 +148,8 @@ private:
 	TObjectPtr<UEditableTextBox> InviteInput;
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> InviteStatus;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> TransitionMask;
 	FString LocalNickname = TEXT("닉네임");
 
 	bool bSearching = false;

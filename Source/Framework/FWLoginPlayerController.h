@@ -6,75 +6,48 @@
 #include "FWLoginPlayerController.generated.h"
 
 class UFWLoginWidget;
-class UFWLobbyWidget;
 
-UCLASS(Config = Game)
+/** L_LoginScreen 전용. 로그인 UI와 로비 레벨 진입만 담당합니다. */
+UCLASS(Config=Game)
 class FRAMEWORK_API AFWLoginPlayerController : public APlayerController
 {
 	GENERATED_BODY()
-
 public:
 	AFWLoginPlayerController();
-
-	/** 기존 로컬 플레이 진입점. 이제 즉시 맵 이동 대신 로비를 표시한다. */
-	UFUNCTION(BlueprintCallable, Category = "Menu")
+	/** 기존 로컬 플레이 진입점. L_Lobby를 열고 로비 컨트롤러에 역할을 넘깁니다. */
+	UFUNCTION(BlueprintCallable, Category="Login")
 	void StartGame();
-	/** 계정 인증 없이 화면 흐름만 확인하는 명시적인 로컬 테스트 로그인. */
 	bool TryPrototypeLogin(const FString& Nickname);
 	bool IsPrototypeLoginEnabled() const { return bEnablePrototypeLogin; }
-
-	/** 서버 요청 없이 로컬 프로토타입 대기를 시작/취소한다. */
-	UFUNCTION(BlueprintCallable, Category = "Menu|Lobby")
-	void BeginPrototypeMatch();
-
-	UFUNCTION(BlueprintCallable, Category = "Menu|Lobby")
-	void CancelPrototypeMatch();
-
-	UFUNCTION(BlueprintCallable, Category = "Menu")
+	UFUNCTION(BlueprintCallable, Category="Login")
 	void QuitGame();
-
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	/** Also include the destination in ProjectPackagingSettings.MapsToCook. */
-	UPROPERTY(Config, EditDefaultsOnly, Category = "Menu")
-	TSoftObjectPtr<UWorld> GameplayLevel;
-
-	/** 미구현 상태에서는 비워 둔다. 설정 시 매칭 완료 후 이 맵으로 이동한다. MapsToCook에도 추가 필요. */
-	UPROPERTY(Config, EditDefaultsOnly, Category = "Menu|Lobby")
-	TSoftObjectPtr<UWorld> CharacterSelectionLevel;
-
-	/** 임시 매칭 대기 시간(초). 실제 서버 매칭 기능과는 별개이다. */
-	UPROPERTY(Config, EditDefaultsOnly, Category = "Menu|Lobby", meta = (ClampMin = "0.1", ClampMax = "60"))
-	float PrototypeMatchDelaySeconds = 5.f;
-
-	/** 매칭 완료 배너를 표시한 뒤 다음 화면으로 이동하기까지의 대기 시간(초). */
-	UPROPERTY(Config, EditDefaultsOnly, Category = "Menu|Lobby", meta = (ClampMin = "0.1", ClampMax = "10"))
-	float MatchCompleteDisplaySeconds = 3.f;
-
-	/** True: 테스트 로그인으로 로비 진입. 실제 계정 서버를 붙일 때 False로 전환합니다. */
-	UPROPERTY(Config, EditDefaultsOnly, Category = "Menu|Prototype")
+	/** 로그인 완료 후 열 로비 레벨. MapsToCook에도 포함해야 합니다. */
+	UPROPERTY(Config, EditDefaultsOnly, Category="Login|Travel")
+	TSoftObjectPtr<UWorld> LobbyLevel;
+	/** 계정 인증 대신 표시 이름만 넘기는 로컬 테스트 로그인. */
+	UPROPERTY(Config, EditDefaultsOnly, Category="Login|Prototype")
 	bool bEnablePrototypeLogin = true;
-
+	/** 로그인 화면을 처음 표시할 때의 페이드인 시간(초). */
+	UPROPERTY(Config, EditDefaultsOnly, Category="Login|Fade", meta=(ClampMin="0",ClampMax="2"))
+	float FadeInSeconds = .25f;
+	/** 로비로 이동하기 전 페이드아웃 시간(초). 0이면 즉시 전환합니다. */
+	UPROPERTY(Config, EditDefaultsOnly, Category="Login|Fade", meta=(ClampMin="0",ClampMax="2"))
+	float FadeOutSeconds = .25f;
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<UFWLoginWidget> MenuWidget;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UFWLobbyWidget> LobbyWidget;
-
-	void TickPrototypeMatch();
-	void CompletePrototypeMatch();
-	void ContinueAfterMatchComplete();
-	void RestoreMenuInput();
-	FTimerHandle PrototypeMatchTimer;
-	FTimerHandle MatchCompleteTimer;
-	double MatchStartedAt = 0.0;
-	double ActiveMatchDelay = 5.0;
-	bool bMatching = false;
-	bool bShowingMatchComplete = false;
-
+	void ShowLoginScreen(const FText& Message);
+	void RestoreLoginInput();
+	void BeginScreenFade(bool bOut);
+	void TickScreenFade();
+	void OpenLobbyLevel();
+	FTimerHandle ScreenFadeTimer;
+	FTimerHandle LevelTravelTimer;
+	double FadeStartedAt = 0;
+	float ActiveFadeDuration = .25f;
+	bool bFadeOut = false;
 	bool bStartingGame = false;
-	FString LocalPreviewNickname = TEXT("닉네임");
 };

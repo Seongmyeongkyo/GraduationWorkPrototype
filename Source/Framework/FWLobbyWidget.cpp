@@ -1,5 +1,6 @@
 ﻿#include "FWLobbyWidget.h"
-#include "FWLoginPlayerController.h"
+#include "FWLobbyPlayerController.h"
+#include "UI/FWMenuFade.h"
 #include "FWLoginWindLayer.h"
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
@@ -416,6 +417,7 @@ void UFWLobbyWidget::ShowMatchComplete()
 
 void UFWLobbyWidget::HideMatchComplete()
 {
+	bTravelling = false;
 	bShowingMatchComplete = false;
 	if (MatchCompleteOverlay) MatchCompleteOverlay->SetVisibility(ESlateVisibility::Collapsed);
 	if (LobbyContent) LobbyContent->SetIsEnabled(true);
@@ -600,7 +602,7 @@ FReply UFWLobbyWidget::NativeOnPreviewKeyDown(const FGeometry& Geometry, const F
 void UFWLobbyWidget::OnMatchClicked()
 {
 	if (!bTeamLobby || bInviteOpen || bTravelling || bShowingMatchComplete) return;
-	if (AFWLoginPlayerController* PC = GetOwningPlayer<AFWLoginPlayerController>())
+	if (AFWLobbyPlayerController* PC = GetOwningPlayer<AFWLobbyPlayerController>())
 	{
 		if (bSearching) PC->CancelPrototypeMatch();
 		else PC->BeginPrototypeMatch();
@@ -614,7 +616,12 @@ void UFWLobbyWidget::OnCharacterClicked()
 
 void UFWLobbyWidget::OnQuitClicked()
 {
-	if (AFWLoginPlayerController* PC = GetOwningPlayer<AFWLoginPlayerController>()) PC->QuitGame();
+	if (AFWLobbyPlayerController* PC = GetOwningPlayer<AFWLobbyPlayerController>()) PC->QuitGame();
+}
+
+void UFWLobbyWidget::SetTransitionOpacity(float Opacity)
+{
+	FWMenuFade::SetOpacity(WidgetTree, TransitionMask, Opacity);
 }
 
 #undef LOCTEXT_NAMESPACE
