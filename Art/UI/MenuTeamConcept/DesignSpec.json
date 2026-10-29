@@ -1,0 +1,146 @@
+{
+  "kind": "visual proposal only",
+  "reference_size": [
+    1920,
+    1080
+  ],
+  "screens": [
+    "main-menu",
+    "team-lobby"
+  ],
+  "supporting_states": [
+    "empty-slots",
+    "invitation-dialog",
+    "matchmaking",
+    "match-complete"
+  ],
+  "match_complete": {
+    "dim_opacity": 0.32,
+    "banner_width_px": 1040,
+    "layers": "user supplied background and text-only PNGs, aligned without asset edits",
+    "prototype_search_seconds": 5,
+    "hold_seconds": 3,
+    "client_integration": "existing local Unreal prototype; server unchanged"
+  },
+  "references": {
+    "background": {
+      "path": "Art/UI/Lobby/Backgrounds/CloseIN_Lobby_Background_ForestEntrance_v1.png",
+      "sha256": "63040f02ad53054c4ff836d1fda72fea98a9e77dfedb8505922a3ced2a12c1aa"
+    },
+    "logo": {
+      "path": "Art/UI/Logo/CloseIN_Logo_Mix_Font1_Design2_v7.png",
+      "sha256": "157300819d51cc6b9e22b0a91c21add51df71c92d58e4c98389f94f38360e23a"
+    },
+    "match_complete_background": {
+      "path": "Art/UI/Matchmaking/CloseIN_MatchComplete_Background_v1_1280.png",
+      "sha256": "380542d8b63efd19743da0782bfa239dc4dfd7a1a9c6d344dcb3cdcbe64f6440"
+    },
+    "match_complete_text": {
+      "path": "Art/UI/Matchmaking/CloseIN_MatchComplete_TextOnly_v1_1280.png",
+      "sha256": "46b56b03c97c27c0c7817c84d316b4cde047f0383f930a3dfda874d8105cb2d8"
+    }
+  },
+  "style": {
+    "cream": "#FFF1D4",
+    "muted_gold": "#E4BD77",
+    "deep_teal": "#163D35",
+    "ink": "#18392F",
+    "shared_skins": "../Lobby/Components/",
+    "font": "Malgun Gothic / system fallback; not redistributed"
+  },
+  "card_nine_slice": {
+    "native_size": [
+      160,
+      120
+    ],
+    "high_resolution_size": [
+      320,
+      240
+    ],
+    "slice_px": 32,
+    "margins": {
+      "left": 0.2,
+      "top": 0.26666666666666666,
+      "right": 0.2,
+      "bottom": 0.26666666666666666
+    }
+  },
+  "texts_are_separate": true,
+  "player_slots": 3,
+  "player_card_screen_size_px": [
+    320,
+    600
+  ],
+  "team_heading_visible": false,
+  "account_nickname_visible": {
+    "main_menu": true,
+    "team_lobby": false
+  },
+  "profile_symbol_screen_size_px": [
+    104,
+    114
+  ],
+  "invitation_dialog": {
+    "alignment": "viewport center",
+    "dim_opacity": 0.32
+  },
+  "profile_kind": "neutral outlined profile symbol, no character artwork",
+  "queue_authority": "proposed party leader only",
+  "default_team_example": "one occupied leader and two invite slots; matchmaking start remains visible and enabled",
+  "full_team_example": "view=full shows three occupied slots with placeholder nicknames",
+  "solo_queue": "allowed by explicit user instruction; preserve empty slots while searching, disable invites until cancellation",
+  "undecided": [
+    "whether empty slots are automatically filled"
+  ],
+  "invitation_behavior": "dialog preview only; submit closes dialog without sending or adding a roster member",
+  "matchmaking_behavior": "browser: local 5s search and 3s completion then continuation event; Unreal: 3s completion before configured destination; no server matching",
+  "excluded": [
+    "mode selection",
+    "levels",
+    "XP",
+    "rank",
+    "currency",
+    "shop",
+    "pass",
+    "missions",
+    "mail",
+    "chat",
+    "friend list",
+    "character art",
+    "extra navigation tabs"
+  ],
+  "svg_exports": {
+    "card-filled": [
+      160,
+      120
+    ],
+    "card-empty": [
+      160,
+      120
+    ],
+    "card-searching": [
+      160,
+      120
+    ],
+    "dialog-surface": [
+      160,
+      120
+    ],
+    "profile-neutral": [
+      58,
+      64
+    ],
+    "invite-plus": [
+      40,
+      40
+    ],
+    "leader-mark": [
+      14,
+      14
+    ],
+    "arrow-back": [
+      20,
+      20
+    ]
+  }
+}

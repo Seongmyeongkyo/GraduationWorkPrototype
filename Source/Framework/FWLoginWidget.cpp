@@ -233,7 +233,9 @@ void UFWLoginWidget::BuildMenu()
 		return Button;
 	};
 	UTextBlock* Label = nullptr;
-	LoginButton = MakeButton(TEXT("Login"), LOCTEXT("Login", "로그인"), true, Label);
+	const AFWLoginPlayerController* LoginPC = GetOwningPlayer<AFWLoginPlayerController>();
+	const bool bLocalPreview = LoginPC && LoginPC->IsPrototypeLoginEnabled();
+	LoginButton = MakeButton(TEXT("Login"), bLocalPreview ? LOCTEXT("PrototypeLogin", "테스트 로그인") : LOCTEXT("Login", "로그인"), true, Label);
 	LoginButton->SetIsEnabled(false);
 	LoginButton->OnClicked.AddDynamic(this, &UFWLoginWidget::OnLoginClicked);
 	AddRow(LoginButton, ButtonBottomGap);
@@ -249,7 +251,7 @@ void UFWLoginWidget::BuildMenu()
 		Links->AddChildToHorizontalBox(Button)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	}
 	AddRow(Links, ButtonBottomGap);
-	StatusLabel = MakeText(LOCTEXT("Offline", "계정 서비스 연결 준비 중"), StatusFont, Muted);
+	StatusLabel = MakeText(bLocalPreview ? LOCTEXT("PrototypeLoginNotice", "로컬 테스트 · 계정 인증 미연결") : LOCTEXT("Offline", "계정 서비스 연결 준비 중"), StatusFont, Muted);
 	USizeBox* StatusSize = WidgetTree->ConstructWidget<USizeBox>();
 	StatusSize->SetHeightOverride(StatusHeight);
 	StatusSize->SetContent(StatusLabel);
@@ -339,6 +341,10 @@ void UFWLoginWidget::OnLoginClicked()
 	// Do not transmit, log, persist, or treat these credentials as an authenticated session.
 	PasswordInput->SetText(FText::GetEmpty());
 	OnCredentialsChanged(FText::GetEmpty());
+	if (AFWLoginPlayerController* PC = GetOwningPlayer<AFWLoginPlayerController>())
+	{
+		if (PC->TryPrototypeLogin(UsernameInput->GetText().ToString())) return;
+	}
 	ShowStatus(LOCTEXT("AuthUnavailable", "로그인 서버 연동 준비 중입니다.\n로컬 플레이로 먼저 둘러보세요."));
 }
 

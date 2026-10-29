@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Close IN · 메인 메뉴 / 팀 로비 시안</title>
+  <link rel="stylesheet" href="concept.css">
+  <script src="concept.js" defer></script>
+</head>
+<body>
+  <nav class="review-toolbar" aria-label="시안 검토 도구">
+    <strong>Close IN <span>화면 구성 제안</span></strong>
+    <div class="review-buttons">
+      <button type="button" data-preview="main">메인 메뉴</button>
+      <button type="button" data-preview="team">팀 로비</button>
+      <button type="button" data-preview="empty">초대 버튼 위치</button>
+      <button type="button" data-preview="invite">초대 창</button>
+      <button type="button" data-preview="searching">매칭 중</button>
+      <button type="button" data-preview="complete">매칭 완료</button>
+    </div>
+    <small id="review-note">시각 제안 · 1인 팀도 매칭 시작 가능 · 빈 슬롯 자동 충원은 미정</small>
+  </nav>
+  <main class="viewport">
+    <div class="stage-fit">
+      <section class="scene" id="scene" aria-label="Close IN 메인 메뉴">
+        <img class="forest" src="../Lobby/Backgrounds/CloseIN_Lobby_Background_ForestEntrance_v1.png" alt="햇살 드는 거목 사이로 길이 이어지는 숲 입구">
+        <div class="top-shade" aria-hidden="true"></div>
+        <div class="bottom-shade" aria-hidden="true"></div>
+        <img class="logo" src="../Logo/CloseIN_Logo_Mix_Font1_Design2_v7.png" alt="Close IN">
+        <header class="account">
+          <span class="nickname">닉네임</span>
+          <span class="account-divider" aria-hidden="true"></span>
+          <button class="skin quiet exit" type="button">종료</button>
+        </header>
+        <div class="main-content" id="main-screen">
+          <div class="main-actions">
+            <button class="skin primary ornate main-start" id="game-start" type="button">
+              <img class="ornament left" src="../Lobby/Components/leaf-left.svg" alt="">
+              <span>게임 시작</span>
+              <img class="ornament right" src="../Lobby/Components/leaf-right.svg" alt="">
+            </button>
+            <button class="skin secondary character" type="button">캐릭터</button>
+          </div>
+        </div>
+        <div class="team-content" id="team-screen" hidden>
+          <button class="skin quiet back" id="back" type="button"><img src="Components/arrow-back.svg" alt=""><span>뒤로</span></button>
+          <div class="team-group" id="team-group">
+            <div class="roster" id="roster" aria-label="팀원 슬롯 3개"></div>
+            <div class="queue-controls" id="queue-controls">
+              <div class="search-status skin quiet" id="search-status" role="status" aria-live="polite" hidden><span class="status-dot" aria-hidden="true"></span><span>매칭 중…</span><time id="elapsed" datetime="PT12S">00:12</time></div>
+              <button class="skin primary ornate queue" id="queue" type="button"><img class="ornament left" src="../Lobby/Components/leaf-left.svg" alt=""><span class="queue-label">매칭 시작</span><img class="ornament right" src="../Lobby/Components/leaf-right.svg" alt=""></button>
+              <p class="search-lock-note" id="search-lock-note" hidden><img src="../Lobby/Components/lock.svg" alt="">매칭 중에는 초대와 팀원 변경이 잠깁니다</p>
+              <p class="member-note" id="member-note" hidden>팀장이 매칭을 시작할 수 있습니다</p>
+            </div>
+          </div>
+        </div>
+        <div class="dialog-layer" id="dialog-layer" hidden>
+          <section class="invite-dialog" role="dialog" aria-modal="true" aria-labelledby="invite-heading" aria-describedby="invite-label">
+            <div class="dialog-heading"><img src="../Lobby/Components/leaf-left.svg" alt=""><h2 id="invite-heading">팀원 초대</h2></div>
+            <form id="invite-form">
+              <label for="invite-nickname" id="invite-label">닉네임</label>
+              <input id="invite-nickname" name="nickname" placeholder="닉네임 입력" autocomplete="off" maxlength="20">
+              <div class="dialog-actions"><button class="skin secondary dialog-cancel" id="invite-cancel" type="button">취소</button><button class="skin primary dialog-invite" id="invite-submit" type="submit" disabled>초대</button></div>
+            </form>
+          </section>
+        </div>
+        <div class="match-complete-layer" id="match-complete-layer" role="status" aria-live="polite" aria-label="매칭 완료" hidden>
+          <div class="match-complete-banner">
+            <img src="../Matchmaking/CloseIN_MatchComplete_Background_v1_1280.png" alt="">
+            <img src="../Matchmaking/CloseIN_MatchComplete_TextOnly_v1_1280.png" alt="매칭 완료">
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
