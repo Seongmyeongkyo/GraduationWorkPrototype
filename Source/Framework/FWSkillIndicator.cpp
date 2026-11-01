@@ -262,11 +262,15 @@ void AFWSkillIndicator::BuildLineShape(float Length, float Width)
 	TArray<FFWIndicatorBatch> NewBatches;
 	NewBatches.SetNum(3);
 
-	// 양옆 경계선: 스킬 폭을 알려 주는 가는 선 두 줄 (화살촉 양 끝까지)
+	// 양옆 경계선: 스킬 폭을 알려 주는 가는 선 두 줄
 	FFWIndicatorBatch& Edges = NewBatches[0];
 	Edges.Color = FLinearColor(BrightColor.R, BrightColor.G, BrightColor.B, EdgeOpacity);
 	AddQuad(Edges, StartX, HornX, -HalfWidth, -HalfWidth + EdgeWidth);
 	AddQuad(Edges, StartX, HornX, HalfWidth - EdgeWidth, HalfWidth);
+	// 스킬 범위를 직사각형으로 닫는 부분
+	if (HeadLength <= 0.f) {
+		AddQuad(Edges, ShapeLength - EdgeWidth, ShapeLength, -HalfWidth + EdgeWidth, HalfWidth - EdgeWidth);
+	}
 
 	// 중앙 띠: 캐릭터 쪽은 가늘고 화살촉 쪽으로 갈수록 굵어짐. 앞쪽 끝은 화살촉 안쪽 곡선에 맞닿음
 	FFWIndicatorBatch& Core = NewBatches[1];

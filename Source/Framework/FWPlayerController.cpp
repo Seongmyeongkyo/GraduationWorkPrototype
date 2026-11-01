@@ -70,6 +70,12 @@ AFWPlayerController::AFWPlayerController()
 	SkillAimSpecs[1].Range = 800.f;   SkillAimSpecs[1].Width = 180.f;   // W
 	SkillAimSpecs[2].Range = 600.f;   SkillAimSpecs[2].Width = 100.f;   // E
 	SkillAimSpecs[3].Range = 1400.f;  SkillAimSpecs[3].Width = 260.f;   // R
+
+	/** 스킬별 쿨타임과 데미지 (임시 값 - 스킬 기획에 맞게 조정) **/
+	SkillAimSpecs[0].Cooldown = 1.f;   SkillAimSpecs[0].Damage = 10;   // Q
+	SkillAimSpecs[1].Cooldown = 2.f;   SkillAimSpecs[1].Damage = 20;   // W
+	SkillAimSpecs[2].Cooldown = 3.f;   SkillAimSpecs[2].Damage = 30;   // E
+	SkillAimSpecs[3].Cooldown = 4.f;   SkillAimSpecs[3].Damage = 40;   // R
 }
 
 void AFWPlayerController::MoveToWorldLocation(const FVector& WorldLocation)
@@ -593,6 +599,17 @@ void AFWPlayerController::RequestSkill(int32 SkillIndex)
 		return;
 	}
 
+	// 1. 스킬 사용 조건 확인 (발동 직전에 한 번 더 확인)
+	if (!CanUseSkill(SkillIndex, /*bNotify=*/true)) {
+		return;
+	}
+	
+	// 2. 스킬 판정 : 그린 범위(시작점, 방향)와 지금 화면의 상대 위치로 한 번만 계산해서 저장 (결과는 사용이 확정되면 알림)
+	FFWSkillUseState& UseState = SkillUseStates[SkillIndex];
+	UseState.Origin = SkillAimOrigin;
+	UseState.Direction = SkillAimDirection;
+	FindSkillTargets(SkillIndex, UseState.Origin, UseState.Direction, UseState.HitPlayerIds);
+
 	UFWNetworkSubsystem* Net = GetNetwork();
 	if (!Net || !Net->IsServerAuthoritative())
 	{
@@ -604,7 +621,7 @@ void AFWPlayerController::RequestSkill(int32 SkillIndex)
 		}
 		if (MyChar->AttributeComp->TryConsumeManaOffline(FWNet::SKILL_MANA_COST))
 		{
-			ActivateSkill(SkillIndex);
+			UseSkill(SkillIndex);
 		}
 		else
 		{
@@ -624,6 +641,9 @@ void AFWPlayerController::RequestSkill(int32 SkillIndex)
 			Dir = ToCursor;
 		}
 	}
+
+	// 3. 서버에서 응답 올 때까지 같은 스킬을 중복 발동하지 않도록 잠금 (마나는 서버가 차감)
+	UseState.bWaitingServer = true;
 
 	Net->SendSkill(SkillIndex, Dir.X, Dir.Y);
 }
@@ -701,6 +721,119 @@ void AFWPlayerController::ActivateSkill(int32 SkillIndex)
 }
 
 // ----------------------------------------------------------------------------
+// 스킬 사용 (쿨타임, 마나, 판정)
+// ----------------------------------------------------------------------------
+bool AFWPlayerController::CanUseSkill(int32 SkillIndex, bool bNotify) const
+{
+	if (SkillIndex < 0 || SkillIndex >= static_cast<int32>(UE_ARRAY_COUNT(SkillUseStates))) {
+		return false;
+	}
+
+	// 서버에 연결된 동안만 응답을 기다림 (연결이 끊기면 응답이 오지 않으므로 무시)
+	const UFWNetworkSubsystem* Net = GetNetwork();
+	const bool bOnline = Net && Net->IsServerAuthoritative();
+	const FFWSkillUseState& UseState = SkillUseStates[SkillIndex];
+	if (bOnline && UseState.bWaitingServer) {
+		return false;
+	}
+
+	// 쿨타임
+	const double Remaining = UseState.CooldownEndTime - GetWorld()->GetTimeSeconds();
+	if (Remaining > 0.0) {
+		if (bNotify && GEngine) {
+			GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, FString::Printf(TEXT("쿨타임 %.1f초"), Remaining));
+		}
+		return false;
+	}
+
+	// 마나: 서버 응답을 기다리는 스킬 몫은 이미 쓴 것으로 봄 (서버가 차감하기 전에 겹쳐 쓰지 않도록)
+	const AFWCharacter* MyChar = Cast<AFWCharacter>(GetPawn());
+	if (!MyChar || !MyChar->AttributeComp) {
+		return false;
+	}
+	int32 WaitingCount = 0;
+	if (bOnline) {
+		for (const FFWSkillUseState& Other : SkillUseStates) {
+			if (Other.bWaitingServer) {
+				++WaitingCount;
+			}
+		}
+	}
+	const float AvailableMana = MyChar->AttributeComp->GetCurrentMana() - FWNet::SKILL_MANA_COST * WaitingCount;
+	if (AvailableMana < FWNet::SKILL_MANA_COST) {
+		if (bNotify && GEngine) {
+			GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, TEXT("마나가 부족합니다"));
+		}
+		return false;
+	}
+	return true;
+}
+
+void AFWPlayerController::UseSkill(int32 SkillIndex)
+{
+	if (SkillIndex < 0 || SkillIndex >= static_cast<int32>(UE_ARRAY_COUNT(SkillUseStates))) {
+		return;
+	}
+
+	FFWSkillUseState& UseState = SkillUseStates[SkillIndex];
+	const FFWSkillAimSpec& Spec = SkillAimSpecs[SkillIndex];
+
+	// 쿨타임 시작 (스킬이 나간 순간부터)
+	UseState.CooldownEndTime = GetWorld()->GetTimeSeconds() + FMath::Max(Spec.Cooldown, 0.f);
+
+	// 디버그용 출력
+	UE_LOG(LogTemp, Log, TEXT("[FW] 스킬 사용: index=%d 시작=%s 방향=%s 맞은 대상=%d명"),
+		SkillIndex, *UseState.Origin.ToString(), *UseState.Direction.ToString(), UseState.HitPlayerIds.Num());
+
+	// 판정 결과 : 확정한 순간 범위에 몸이 닿은 다른 플레이어. 서버는 그대로 중계하고, 맞은 사람이 체력을 깎음
+	if (UFWNetworkSubsystem* Net = GetNetwork()) {
+		for (const int32 PlayerId : UseState.HitPlayerIds) {
+			Net->SendHit(PlayerId, Spec.Damage);
+		}
+	}
+	UseState.HitPlayerIds.Reset();
+
+	ActivateSkill(SkillIndex);
+}
+
+void AFWPlayerController::FindSkillTargets(int32 SkillIndex, const FVector& Origin, const FVector& Direction, TArray<int32>& OutPlayerIds) const
+{
+	OutPlayerIds.Reset();
+	if (SkillIndex < 0 || SkillIndex >= static_cast<int32>(UE_ARRAY_COUNT(SkillAimSpecs))) {
+		return;
+	}
+
+	// 그린 범위와 같은 길이, 폭으로 다른 플레이어만 한 번씩 확인. 물리 검사 없이 계산만 함
+	const FFWSkillAimSpec& Spec = SkillAimSpecs[SkillIndex];
+	for (const TPair<int32, TWeakObjectPtr<AFWCharacter>>& Pair : RemoteAvatars) {
+		if (Pair.Value.IsValid() && IsInSkillLine(Origin, Direction, Spec.Range, Spec.Width, Pair.Value.Get())) {
+			OutPlayerIds.Add(Pair.Key);
+		}
+	}
+}
+
+bool AFWPlayerController::IsInSkillLine(const FVector& Origin, const FVector& Direction, float Length, float Width, const AActor* Target) const
+{
+	const FVector Forward = Direction.GetSafeNormal2D();
+	if (!Target || Forward.IsNearlyZero()) {
+		return false;
+	}
+
+	// 대상 위치를 스킬 방향 기준 앞(X), 옆(Y) 거리로 바꿈 (높이 무시)
+	const FVector Right(-Forward.Y, Forward.X, 0.f);
+	const FVector ToTarget = Target->GetActorLocation() - Origin;
+	const float AlongX = static_cast<float>(FVector::DotProduct(ToTarget, Forward));
+	const float SideY = static_cast<float>(FVector::DotProduct(ToTarget, Right));
+
+	// 직사각형에서 대상 중심까지 가장 가까운 거리가 대상 반지름 이하이면 몸이 닿은 것
+	const float HalfWidth = FMath::Max(Width, 0.f) * 0.5f;
+	const float OutX = AlongX - FMath::Clamp(AlongX, 0.f, FMath::Max(Length, 0.f));
+	const float OutY = SideY - FMath::Clamp(SideY, -HalfWidth, HalfWidth);
+	const float Radius = Target->GetSimpleCollisionRadius();
+	return OutX * OutX + OutY * OutY <= Radius * Radius;
+}
+
+// ----------------------------------------------------------------------------
 // 스킬 조준 (범위 표시)
 // ----------------------------------------------------------------------------
 void AFWPlayerController::OnSkillPressed(const FInputActionValue& /*Value*/, int32 SkillIndex)
@@ -740,6 +873,11 @@ void AFWPlayerController::FlushPressedKeys()
 void AFWPlayerController::BeginSkillAim(int32 SkillIndex)
 {
 	if (SkillIndex < 0 || SkillIndex >= static_cast<int32>(UE_ARRAY_COUNT(SkillAimSpecs))) {
+		return;
+	}
+
+	// 쿨타임, 서버 응답 대기, 마나 확인 쓸 수 없으면 스킬 범위 그리기 X (조준 중이던 다른 스킬은 그대로)
+	if (!CanUseSkill(SkillIndex, /*bNotify=*/true)) {
 		return;
 	}
 
@@ -1056,12 +1194,22 @@ void AFWPlayerController::HandlePlayerSkill(int32 PlayerId, int32 SkillIndex, fl
 	// The server already spent the mana. No skill visuals for other players yet - only fire our own.
 	if (PlayerId == LocalPlayerId)
 	{
-		ActivateSkill(SkillIndex);
+		//서버가 마나를 확인하고 차감 -> 사용 확정이면 쿨타임, 저장된 판정 결과, 발동
+		if (SkillIndex >= 0 && SkillIndex < static_cast<int32>(UE_ARRAY_COUNT(SkillUseStates))) {
+			SkillUseStates[SkillIndex].bWaitingServer = false;
+			UseSkill(SkillIndex);
+		}
 	}
 }
 
-void AFWPlayerController::HandleSkillFailed(int32 /*SkillIndex*/)
+void AFWPlayerController::HandleSkillFailed(int32 SkillIndex)
 {
+	// 스킬 사용 거절 (마나 부족): 응답 대기를 풀고 저장해 둔 판정 결과는 버림. 쿨타임은 시작하지 않음
+	if (SkillIndex >= 0 && SkillIndex < static_cast<int32>(UE_ARRAY_COUNT(SkillUseStates))) {
+		SkillUseStates[SkillIndex].bWaitingServer = false;
+		SkillUseStates[SkillIndex].HitPlayerIds.Reset();
+	}
+
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, TEXT("마나가 부족합니다"));

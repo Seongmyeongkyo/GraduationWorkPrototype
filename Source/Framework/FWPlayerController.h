@@ -46,6 +46,24 @@ struct FFWSkillAimSpec
 	/** 스킬 폭 **/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill")
 	float Width = 120.f;
+
+	/** 스킬 쿨타임 : 스킬이 사용된 순간부터 시작 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill", meta = (ClampMin = "0.0"))
+	float Cooldown = 0.5f;
+
+	/** 스킬을 맞은 대상에게 주는 데미지 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill", meta = (ClampMin = "0"))
+	int32 Damage = 10;
+};
+
+/** 스킬 하나의 사용 상태(쿨타임, 서버 응답 대기, 발동을 확정한 순간의 범위와 판정 결과) **/
+struct FFWSkillUseState
+{
+	double CooldownEndTime = 0.0;	// 이 시간이 지나야 재사용 가능
+	bool bWaitingServer = false;	// 요청을 보내고 서버 응답 기다리기
+	FVector Origin = FVector::ZeroVector;	// 확정 순간의 시작점 (그린 값)
+	FVector Direction = FVector::ForwardVector;	// 확정 순간의 방향 (그린 값)
+	TArray<int32> HitPlayerIds;	// 확정 순간 범위에 피격된 다른 플레이어
 };
 
 UCLASS()
@@ -220,6 +238,9 @@ protected:
 	const FVector& GetSkillAimOrigin() const { return SkillAimOrigin; }
 	const FVector& GetSkillAimDirection() const { return SkillAimDirection; }
 
+	/** 직선 스킬 판정 : 발밑에서 시작하여 지정된 방향으로 길이(Length), 폭(Width)인 직사각형에 피격여부 판단 및 높이 무시 **/
+	bool IsInSkillLine(const FVector& Origin, const FVector& Direction, float Length, float Width, const AActor* Target) const;
+
 	// ---- 네트워크 ----
 	UPROPERTY(EditAnywhere, Category = "Network")
 	FString ServerIP = TEXT("127.0.0.1");
@@ -300,6 +321,19 @@ private:
 	 * No server: applies the same mana rule locally and fires immediately.
 	 */
 	void RequestSkill(int32 SkillIndex);
+
+	/** ----스킬 사용 (쿨타임, 마나, 판정)---- **/
+	// 현재 사용 스킬 사용 가능 여부 판단(bool 변수로 못쓰는 이유 출력)
+	bool CanUseSkill(int32 SkillIndex, bool bNotify) const;
+
+	// 스킬 사용 확정
+	void UseSkill(int32 SkillIndex);
+
+	// 스킬 판정
+	void FindSkillTargets(int32 SkillIndex, const FVector& Origin, const FVector& Direction, TArray<int32>& OutPlayerIds) const;
+
+	// 스킬별 사용 상태
+	FFWSkillUseState SkillUseStates[4];
 
 	/** 현재 목표를 향해 캐릭터를 이동시킴 (PlayerTick 에서 호출) */
 	void MoveTowardDestination();

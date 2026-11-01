@@ -79,9 +79,9 @@ public:
 
 protected:
 	// ---- 모양 ----
-	/** 캐릭터 중심에서 떨어진 곳부터 표시 (캐릭터의 발끝을 가리지 않도록) **/
+	/** 캐릭터 중심에서 떨어진 곳부터 표시 **/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Indicator | Shape")
-	float StartOffset = 50.f;
+	float StartOffset = 0.f;
 
 	/** 지면에 묻히지 않도록 설정 **/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Indicator | Shape")
@@ -98,7 +98,7 @@ protected:
 
 	// 스킬 끝 부분 길이
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Indicator | Shape")
-	float HeadLengthRatio = 0.8f;
+	float HeadLengthRatio = 0.f;
 
 	// 스킬 끝 부분 가운데 두께
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Indicator | Shape")
