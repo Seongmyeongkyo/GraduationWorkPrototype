@@ -1,0 +1,116 @@
+{
+  "resolution": [
+    1920,
+    1080
+  ],
+  "bounds": {
+    "main": [
+      {
+        "class": "logo",
+        "text": "",
+        "x": 64,
+        "y": 38,
+        "width": 218,
+        "height": 109
+      },
+      {
+        "class": "nickname",
+        "text": "닉네임",
+        "x": 1571,
+        "y": 66.5,
+        "width": 120,
+        "height": 31
+      },
+      {
+        "class": "skin quiet exit",
+        "text": "종료",
+        "x": 1744,
+        "y": 54,
+        "width": 112,
+        "height": 56
+      },
+      {
+        "class": "skin primary ornate main-start",
+        "text": "게임 시작",
+        "x": 664,
+        "y": 890,
+        "width": 400,
+        "height": 88
+      },
+      {
+        "class": "skin secondary character",
+        "text": "캐릭터",
+        "x": 1080,
+        "y": 898,
+        "width": 176,
+        "height": 72
+      }
+    ],
+    "team": [
+      {
+        "class": "logo",
+        "text": "",
+        "x": 224,
+        "y": 34,
+        "width": 188,
+        "height": 94
+      },
+      {
+        "class": "skin quiet back",
+        "text": "뒤로",
+        "x": 64,
+        "y": 54,
+        "width": 124,
+        "height": 56
+      },
+      {
+        "class": "player-card leader",
+        "text": "팀장닉네임",
+        "x": 456,
+        "y": 208,
+        "width": 320,
+        "height": 600
+      },
+      {
+        "class": "player-card empty",
+        "text": "초대",
+        "x": 800,
+        "y": 208,
+        "width": 320,
+        "height": 600
+      },
+      {
+        "class": "invite-slot",
+        "text": "초대",
+        "x": 800,
+        "y": 208,
+        "width": 320,
+        "height": 600
+      },
+      {
+        "class": "player-card empty",
+        "text": "초대",
+        "x": 1144,
+        "y": 208,
+        "width": 320,
+        "height": 600
+      },
+      {
+        "class": "invite-slot",
+        "text": "초대",
+        "x": 1144,
+        "y": 208,
+        "width": 320,
+        "height": 600
+      },
+      {
+        "class": "skin primary ornate queue",
+        "text": "매칭 시작",
+        "x": 760,
+        "y": 840,
+        "width": 400,
+        "height": 84
+      }
+    ]
+  }
+}

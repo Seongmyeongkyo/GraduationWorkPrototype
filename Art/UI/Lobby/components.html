@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Close IN · UI 컴포넌트</title>
+  <style>
+    body { background:#243a30; color:#fff1d4; font:16px "Malgun Gothic",sans-serif; margin:40px; }
+    h1 { font-size:24px; margin-bottom:8px; } p { color:#c2cdbb; }
+    main { display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:32px; }
+    figure { margin:0; } figure img { width:256px; height:192px; object-fit:contain; }
+    figcaption { margin-top:8px; font-size:14px; } a { color:#eaca86; }
+  </style>
+</head>
+<body>
+  <h1>Close IN · 로비 컴포넌트</h1>
+  <p>문자 없는 투명 스킨. SVG 원본과 2배 크기 PNG를 함께 제공합니다. <a href="index.html">로비 시안 보기</a></p>
+  <main id="list"></main>
+  <script>
+    const names=['primary-default','primary-hover','primary-pressed','secondary-default','secondary-hover','secondary-pressed','quiet-default','quiet-hover','quiet-pressed','mode-default','mode-selected','mode-selected-disabled','disabled','leaf-left','leaf-right'];
+    names.forEach(name => {
+      const figure=document.createElement('figure');
+      const image=document.createElement('img'); image.src=`Components/${name}${name.startsWith('leaf-') ? '' : '@2x'}.png`; image.alt=name;
+      const caption=document.createElement('figcaption'); caption.textContent=name;
+      figure.append(image,caption); document.getElementById('list').append(figure);
+    });
+  </script>
+</body>
+</html>

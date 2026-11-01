@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Close IN · 로비 시안</title>
+  <link rel="stylesheet" href="lobby.css">
+  <script src="lobby.js" defer></script>
+</head>
+<body>
+  <nav class="review-tools" aria-label="시안 검토">
+    <strong>Close IN <span>로비 시안</span></strong>
+    <div class="review-options">
+      <button type="button" data-layout="A" aria-pressed="true">A · 하단 중앙 / 추천</button>
+      <button type="button" data-layout="B" aria-pressed="false">B · 왼쪽 메뉴</button>
+      <button type="button" id="review-search">매칭 중 상태 보기</button>
+    </div>
+    <small>화면 검토용 · 두 모드의 실제 제공 여부는 미정</small>
+  </nav>
+  <main class="viewport">
+    <div class="stage-fit">
+      <section class="lobby layout-a" id="stage" aria-label="Close IN 로비 시안">
+        <img class="forest" src="Backgrounds/CloseIN_Lobby_Background_ForestEntrance_v1.png" alt="거목 사이로 햇살과 길이 열리는 숲 입구">
+        <div class="header-shade" aria-hidden="true"></div>
+        <div class="action-shade" aria-hidden="true"></div>
+        <img class="game-logo" src="../Logo/CloseIN_Logo_Mix_Font1_Design2_v7.png" alt="Close IN">
+        <header class="account">
+          <span class="nickname">닉네임</span>
+          <span class="account-divider" aria-hidden="true"></span>
+          <button class="skin utility exit" type="button">종료</button>
+        </header>
+        <div class="action-group">
+          <div class="search-status skin quiet" role="status" aria-live="polite" hidden>
+            <span class="search-indicator" aria-hidden="true"></span>
+            <span>매칭 중…</span><time id="elapsed" datetime="PT2S">00:02</time>
+          </div>
+          <div class="mode-row">
+            <div class="mode-selector" role="group" aria-label="대전 모드">
+              <button class="skin mode" type="button" data-mode="1:1" aria-pressed="false">1:1</button>
+              <button class="skin mode selected" type="button" data-mode="3:3" aria-pressed="true">3:3</button>
+            </div>
+            <span class="locked-mode" hidden><img src="Components/lock.svg" alt="">변경 잠김</span>
+          </div>
+          <div class="action-row">
+            <button class="skin primary match" id="match" type="button"><img class="button-flourish flourish-left" src="Components/leaf-left.svg" alt=""><span class="match-label">매칭 시작</span><img class="button-flourish flourish-right" src="Components/leaf-right.svg" alt=""></button>
+            <button class="skin secondary character" type="button"><img class="character-lock" src="Components/lock.svg" alt="" hidden><span>캐릭터</span></button>
+          </div>
+          <p class="search-note" hidden>매칭 중에는 모드와 캐릭터를 변경할 수 없습니다</p>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

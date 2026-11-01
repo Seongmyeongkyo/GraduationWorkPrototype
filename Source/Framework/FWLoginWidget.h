@@ -22,6 +22,7 @@ public:
 	TSharedPtr<SWidget> GetInitialFocusWidget() const;
 	void ShowStatus(const FText& Message);
 	void SetStartingGame();
+	void SetTransitionOpacity(float Opacity);
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -69,6 +70,8 @@ private:
 	TObjectPtr<UTextBlock> StatusLabel;
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> ControlsPanel;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> TransitionMask;
 	UPROPERTY(Transient)
 	TObjectPtr<UEditableTextBox> UsernameInput;
 	UPROPERTY(Transient)

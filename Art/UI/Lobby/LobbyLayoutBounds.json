@@ -1,0 +1,221 @@
+{
+  "resolution": [
+    1920,
+    1080
+  ],
+  "layouts": {
+    "A_Idle": [
+      {
+        "text": "",
+        "class": "game-logo",
+        "x": 64,
+        "y": 38,
+        "w": 218,
+        "h": 109,
+        "disabled": false
+      },
+      {
+        "text": "닉네임",
+        "class": "nickname",
+        "x": 1571,
+        "y": 66.5,
+        "w": 120,
+        "h": 31,
+        "disabled": false
+      },
+      {
+        "text": "종료",
+        "class": "skin utility exit",
+        "x": 1744,
+        "y": 54,
+        "w": 112,
+        "h": 56,
+        "disabled": false
+      },
+      {
+        "text": "1:1",
+        "class": "skin mode",
+        "x": 869,
+        "y": 832,
+        "w": 88,
+        "h": 48,
+        "disabled": false
+      },
+      {
+        "text": "3:3",
+        "class": "skin mode selected",
+        "x": 963,
+        "y": 832,
+        "w": 88,
+        "h": 48,
+        "disabled": false
+      },
+      {
+        "text": "매칭 시작",
+        "class": "skin primary match",
+        "x": 664,
+        "y": 906,
+        "w": 400,
+        "h": 84,
+        "disabled": false
+      },
+      {
+        "text": "캐릭터",
+        "class": "skin secondary character",
+        "x": 1080,
+        "y": 913,
+        "w": 176,
+        "h": 70,
+        "disabled": false
+      }
+    ],
+    "B_Idle": [
+      {
+        "text": "",
+        "class": "game-logo",
+        "x": 64,
+        "y": 38,
+        "w": 218,
+        "h": 109,
+        "disabled": false
+      },
+      {
+        "text": "닉네임",
+        "class": "nickname",
+        "x": 1571,
+        "y": 66.5,
+        "w": 120,
+        "h": 31,
+        "disabled": false
+      },
+      {
+        "text": "종료",
+        "class": "skin utility exit",
+        "x": 1744,
+        "y": 54,
+        "w": 112,
+        "h": 56,
+        "disabled": false
+      },
+      {
+        "text": "1:1",
+        "class": "skin mode",
+        "x": 96,
+        "y": 530,
+        "w": 88,
+        "h": 48,
+        "disabled": false
+      },
+      {
+        "text": "3:3",
+        "class": "skin mode selected",
+        "x": 190,
+        "y": 530,
+        "w": 88,
+        "h": 48,
+        "disabled": false
+      },
+      {
+        "text": "매칭 시작",
+        "class": "skin primary match",
+        "x": 88,
+        "y": 606,
+        "w": 352,
+        "h": 84,
+        "disabled": false
+      },
+      {
+        "text": "캐릭터",
+        "class": "skin secondary character",
+        "x": 88,
+        "y": 706,
+        "w": 176,
+        "h": 70,
+        "disabled": false
+      }
+    ],
+    "A_Searching": [
+      {
+        "text": "",
+        "class": "game-logo",
+        "x": 64,
+        "y": 38,
+        "w": 218,
+        "h": 109,
+        "disabled": false
+      },
+      {
+        "text": "닉네임",
+        "class": "nickname",
+        "x": 1571,
+        "y": 66.5,
+        "w": 120,
+        "h": 31,
+        "disabled": false
+      },
+      {
+        "text": "종료",
+        "class": "skin utility exit",
+        "x": 1744,
+        "y": 54,
+        "w": 112,
+        "h": 56,
+        "disabled": false
+      },
+      {
+        "text": "매칭 중…00:02",
+        "class": "search-status skin quiet",
+        "x": 822,
+        "y": 748,
+        "w": 276,
+        "h": 56,
+        "disabled": false
+      },
+      {
+        "text": "1:1",
+        "class": "skin mode",
+        "x": 869,
+        "y": 832,
+        "w": 88,
+        "h": 48,
+        "disabled": true
+      },
+      {
+        "text": "3:3",
+        "class": "skin mode selected",
+        "x": 963,
+        "y": 832,
+        "w": 88,
+        "h": 48,
+        "disabled": true
+      },
+      {
+        "text": "매칭 취소",
+        "class": "skin primary match",
+        "x": 664,
+        "y": 906,
+        "w": 400,
+        "h": 84,
+        "disabled": false
+      },
+      {
+        "text": "캐릭터",
+        "class": "skin secondary character",
+        "x": 1080,
+        "y": 913,
+        "w": 176,
+        "h": 70,
+        "disabled": true
+      },
+      {
+        "text": "매칭 중에는 모드와 캐릭터를 변경할 수 없습니다",
+        "class": "search-note",
+        "x": 664,
+        "y": 1006,
+        "w": 592,
+        "h": 21,
+        "disabled": false
+      }
+    ]
+  }
+}
