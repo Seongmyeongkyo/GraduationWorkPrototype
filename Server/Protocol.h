@@ -15,6 +15,16 @@ constexpr float MAX_MANA = 100.f;
 constexpr float SKILL_MANA_COST = 20.f;
 constexpr float MANA_REGEN_PER_SECOND = 5.f;
 
+// 이동 위치 추정용. 서버는 이동을 시뮬레이션하지 않고, 원격 아바타처럼 목적지까지 직선으로 걷는다고 보고
+// 현재 위치를 추정한다. 클라이언트 AFWCharacter의 MaxWalkSpeed(600)와 같아야 한다.
+constexpr float MOVE_SPEED = 600.f;
+
+// 접속 직후 위치. 클라이언트가 실제로 시작하는 PlayerStart 좌표로 맞춰야 다른 화면에서 원점에 나타나지 않는다.
+// (임시) 지금은 원점. 나중에 서버가 팀별 시작 지점을 정하면 그쪽으로 교체.
+constexpr float SPAWN_X = 0.f;
+constexpr float SPAWN_Y = 0.f;
+constexpr float SPAWN_Z = 0.f;
+
 // 채팅 메시지 최대 바이트 (UTF-8, 널 문자 포함). 한글은 약 49자.
 // 패킷 크기 필드가 1바이트이고 서버 수신 버퍼가 200바이트라서 이 이상 늘리기 어렵다.
 constexpr int CHAT_MAX_BYTES = 150;

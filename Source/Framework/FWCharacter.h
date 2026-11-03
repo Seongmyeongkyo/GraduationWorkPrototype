@@ -35,8 +35,15 @@ public:
 
 private:
 	/** 원격 아바타를 목표 지점으로 이동시킴 (Tick 에서 호출, bIsRemoteAvatar 일 때만) */
-	void MoveTowardRemoteDestination();
+	void MoveTowardRemoteDestination(float DeltaSeconds);
+
+	/** LoL-style soft collision: while moving and overlapping another character, sidestep around it (every character, local or remote). */
+	void ApplySoftSeparation(float DeltaSeconds);
 
 	FVector RemoteDestination = FVector::ZeroVector;
 	bool bHasRemoteDestination = false;
+
+	/** NavMesh route to RemoteDestination, computed when a destination arrives. Empty = walk straight (no NavMesh / no path). */
+	TArray<FVector> RemotePathPoints;
+	int32 RemotePathIndex = 0;
 };
