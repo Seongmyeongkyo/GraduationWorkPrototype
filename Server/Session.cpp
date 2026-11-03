@@ -1,5 +1,6 @@
 #include "Session.h"
 #include "Logger.h"
+#include <cmath>
 #include <cstring>
 
 using namespace std;
@@ -67,7 +68,9 @@ void SESSION::reset() {
     m_id = 999;
     m_prev_recv = 0;
     memset(m_username, 0, sizeof(m_username));
-    m_x = 0.f; m_y = 0.f; m_z = 0.f;
+    m_x = SPAWN_X; m_y = SPAWN_Y; m_z = SPAWN_Z;
+    m_start_x = SPAWN_X; m_start_y = SPAWN_Y; m_start_z = SPAWN_Z;
+    m_move_start_time = std::chrono::steady_clock::now();
     m_hp = 100.f; m_mp = MAX_MANA; m_exp = 0;
     m_team = 0;
     m_bush = 0;
@@ -133,10 +136,12 @@ void SESSION::send_add_player(int player_id) {
     packet.playerId = player_id;
     SESSION& pl = clients[player_id];
     memcpy(packet.username, pl.m_username, sizeof(packet.username));
-    packet.x = pl.m_x;
-    packet.y = pl.m_y;
-    packet.z = pl.m_z;
+    // 목적지가 아니라 지금쯤 있을 위치에 만들게 한다 (예전엔 늦게 들어온 사람에게 목적지에 순간이동한 것처럼 보였음)
+    pl.estimate_position(packet.x, packet.y, packet.z);
     do_send(packet.size, reinterpret_cast<char*>(&packet));
+
+    // 아직 걷는 중이면 목적지를 이어서 보내서, 먼저 있던 사람들과 같은 모습으로 걸어가게 한다
+    if (pl.is_moving() && can_see(pl)) send_move_packet(player_id);
 }
 
 void SESSION::send_move_packet(int mover) {
@@ -236,6 +241,29 @@ void SESSION::send_chat(int sender_id, uint8_t channel, const char* message) {
     do_send(packet.size, reinterpret_cast<char*>(&packet));
 }
 
+void SESSION::estimate_position(float& x, float& y, float& z) const {
+    const float dx = m_x - m_start_x;
+    const float dy = m_y - m_start_y;
+    const float dz = m_z - m_start_z;
+    const float dist = std::sqrt(dx * dx + dy * dy); // 클라이언트 이동과 같이 평면 거리 기준
+    const float elapsed = std::chrono::duration<float>(std::chrono::steady_clock::now() - m_move_start_time).count();
+    const float traveled = MOVE_SPEED * elapsed;
+    if (dist <= 0.f || traveled >= dist) {
+        x = m_x; y = m_y; z = m_z; // 도착
+        return;
+    }
+    const float t = traveled / dist;
+    x = m_start_x + dx * t;
+    y = m_start_y + dy * t;
+    z = m_start_z + dz * t;
+}
+
+bool SESSION::is_moving() const {
+    float x, y, z;
+    estimate_position(x, y, z);
+    return x != m_x || y != m_y || z != m_z;
+}
+
 bool SESSION::can_see(const SESSION& target) const {
     if (target.m_id == m_id || target.m_team == m_team) return true; // 나와 아군은 항상 보임
     if (target.m_bush == 0) return true;                             // 부시 밖
@@ -289,6 +317,9 @@ void SESSION::process_packet(unsigned char* p) {
     }
     case C2S_MOVE: {
         C2S_Move* packet = reinterpret_cast<C2S_Move*>(p);
+        // 새 이동은 지금 추정 위치에서 시작 (다른 클라이언트의 원격 아바타도 그 자리에서 방향을 바꿈)
+        estimate_position(m_start_x, m_start_y, m_start_z);
+        m_move_start_time = std::chrono::steady_clock::now();
         m_x = packet->x;
         m_y = packet->y;
         m_z = packet->z;

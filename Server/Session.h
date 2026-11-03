@@ -16,7 +16,10 @@ public:
     int m_prev_recv;
     DWORD m_recv_flag;
     char m_username[MAX_NAME_LEN];
-    float m_x, m_y, m_z;
+    float m_x, m_y, m_z;      // 마지막으로 받은 목적지
+    // 현재 위치 추정용: 이번 이동을 시작한 위치와 시각 (목적지는 m_x/m_y/m_z)
+    float m_start_x, m_start_y, m_start_z;
+    std::chrono::steady_clock::time_point m_move_start_time;
     float m_hp;         // 클라이언트가 마지막으로 보고한 값 (검증 안 함)
     float m_mp;         // 서버가 관리 (스킬 사용 시 차감, 1초마다 회복)
     int32_t m_exp;      // C2S_GetExp로 받은 양의 누적
@@ -58,6 +61,10 @@ public:
     // 채팅. sender_id = -1이면 시스템 메시지.
     void send_chat(int sender_id, uint8_t channel, const char* message);
     bool allow_chat(); // 도배 제한에 걸리지 않았으면 true (호출 횟수를 셈)
+
+    // 이동 위치 추정 (MOVE_SPEED로 목적지까지 직선 이동한다고 가정)
+    void estimate_position(float& x, float& y, float& z) const;
+    bool is_moving() const;
 
     // 부시(은신)
     bool can_see(const SESSION& target) const;

@@ -10,6 +10,9 @@
 #include "Animation/AnimInstance.h"
 #include "UObject/ConstructorHelpers.h"
 #include "FWHealManaActorComponent.h"
+#include "NavigationSystem.h"
+#include "NavigationPath.h"
+#include "EngineUtils.h"
 
 AFWCharacter::AFWCharacter()
 {
@@ -49,6 +52,12 @@ AFWCharacter::AFWCharacter()
 	// 캡슐 크기(언리얼 마네킹 표준 값)
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.f);
 
+	// LoL-style unit collision: characters don't hard-block each other (terrain/walls still block);
+	// a moving character sidesteps others instead (ApplySoftSeparation).
+	// Each client simulated these collisions separately, so one screen rubbed against an avatar that
+	// another screen walked straight past - the positions then drifted apart for good.
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+
 	if (USkeletalMeshComponent* MeshComp = GetMesh())
 	{
 		MeshComp->SetRelativeLocation(FVector(0.f, 0.f, -96.f));
@@ -77,7 +86,50 @@ void AFWCharacter::Tick(float DeltaSeconds)
 
 	if (bIsRemoteAvatar)
 	{
-		MoveTowardRemoteDestination();
+		MoveTowardRemoteDestination(DeltaSeconds);
+	}
+
+	ApplySoftSeparation(DeltaSeconds);
+}
+
+void AFWCharacter::ApplySoftSeparation(float DeltaSeconds)
+{
+	// Standing characters are never pushed - only the one walking into someone sidesteps.
+	const FVector Velocity2D(GetVelocity().X, GetVelocity().Y, 0.f);
+	if (Velocity2D.SizeSquared() < 1.f || !GetWorld())
+	{
+		return;
+	}
+
+	// Push only sideways (perpendicular to where we're heading). Forward motion stays with the
+	// path/destination, so the two never fight each other - that fight is what made RVO orbit.
+	const FVector Forward = Velocity2D.GetSafeNormal();
+	const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward);
+	const float MinDistance = GetCapsuleComponent()->GetScaledCapsuleRadius() * 2.f;
+
+	FVector Push = FVector::ZeroVector;
+	for (TActorIterator<AFWCharacter> It(GetWorld()); It; ++It)
+	{
+		const AFWCharacter* Other = *It;
+		if (Other == this || Other->IsHidden()) // hidden = in a bush we can't see into
+		{
+			continue;
+		}
+		const FVector ToOther(Other->GetActorLocation().X - GetActorLocation().X, Other->GetActorLocation().Y - GetActorLocation().Y, 0.f);
+		const float Distance = ToOther.Size();
+		if (Distance >= MinDistance || FVector::DotProduct(ToOther, Forward) < 0.f) // not overlapping, or already behind us
+		{
+			continue;
+		}
+		// Other on our right -> step left, and vice versa (dead ahead -> step right, so every client agrees).
+		const float Side = FVector::DotProduct(ToOther, Right) > 0.f ? -1.f : 1.f;
+		Push += Right * Side * (MinDistance - Distance);
+	}
+
+	if (!Push.IsNearlyZero())
+	{
+		constexpr float SidestepSpeed = 600.f; // cm/s, same as walking
+		AddActorWorldOffset(Push.GetClampedToMaxSize(SidestepSpeed * DeltaSeconds), /*bSweep=*/true);
 	}
 }
 
@@ -85,25 +137,57 @@ void AFWCharacter::SetRemoteDestination(const FVector& Destination)
 {
 	RemoteDestination = Destination;
 	bHasRemoteDestination = true;
+
+	// Take the same NavMesh route the owner's pawn takes (it moves with SimpleMoveToLocation),
+	// so the avatar goes around obstacles instead of getting stuck and drifting from the real position.
+	// No AIController on purpose: possessing the avatar would make IsLocallyControlled() true in
+	// standalone, and remote avatars would then report bushes/HP as if they were the local player.
+	RemotePathPoints.Reset();
+	RemotePathIndex = 0;
+	if (UNavigationPath* Path = UNavigationSystemV1::FindPathToLocationSynchronously(this, GetActorLocation(), Destination, this))
+	{
+		if (Path->IsValid() && Path->PathPoints.Num() >= 2)
+		{
+			RemotePathPoints = Path->PathPoints;
+			RemotePathIndex = 1; // [0] is where we are now
+		}
+	}
 }
 
-void AFWCharacter::MoveTowardRemoteDestination()
+void AFWCharacter::MoveTowardRemoteDestination(float DeltaSeconds)
 {
 	if (!bHasRemoteDestination)
 	{
 		return;
 	}
 
-	const FVector ToTarget = RemoteDestination - GetActorLocation();
+	const bool bFollowingPath = RemotePathPoints.IsValidIndex(RemotePathIndex);
+	const bool bLastPoint = !bFollowingPath || RemotePathIndex == RemotePathPoints.Num() - 1;
+	const FVector Target = bFollowingPath ? RemotePathPoints[RemotePathIndex] : RemoteDestination;
+	const FVector ToTarget = Target - GetActorLocation();
 
+	// Intermediate corners use a wider radius so the avatar doesn't brake at every turn.
 	constexpr float AcceptanceRadius = 10.f;
-	if (FVector(ToTarget.X, ToTarget.Y, 0.f).SizeSquared() <= FMath::Square(AcceptanceRadius))
+	constexpr float CornerRadius = 50.f;
+	// Never smaller than one frame's step: at 600cm/s and a low frame rate the avatar moves more than the
+	// radius per frame, so it could hop over the circle every frame and jitter around the point forever.
+	const float StepThisFrame = GetCharacterMovement()->GetMaxSpeed() * DeltaSeconds;
+	const float ReachDistance = FMath::Max(bLastPoint ? AcceptanceRadius : CornerRadius, StepThisFrame);
+	if (FVector(ToTarget.X, ToTarget.Y, 0.f).SizeSquared() <= FMath::Square(ReachDistance))
 	{
-		bHasRemoteDestination = false; // 도착 -> 정지
+		if (!bLastPoint)
+		{
+			++RemotePathIndex;
+			return;
+		}
+		// 도착 -> 정확히 목적지에 세우고 남은 속도를 없앰 (브레이크 관성으로 지나쳐 미끄러지지 않게)
+		SetActorLocation(FVector(Target.X, Target.Y, GetActorLocation().Z), /*bSweep=*/true);
+		GetCharacterMovement()->StopMovementImmediately();
+		bHasRemoteDestination = false;
+		RemotePathPoints.Reset();
 		return;
 	}
 
-	// 로컬 플레이어처럼 NavMesh 경로를 따라가지 않고 직선으로 이동한다 (단순화).
-	// 장애물 회피가 필요해지면 AIController 를 붙여 SimpleMoveToLocation 으로 교체.
+	// NavMesh 경로가 있으면 다음 꺾이는 지점으로, 없으면(NavMesh 밖 등) 목적지로 직선 이동
 	AddMovementInput(ToTarget.GetSafeNormal2D(), 1.f);
 }
