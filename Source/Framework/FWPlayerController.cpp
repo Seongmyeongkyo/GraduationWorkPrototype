@@ -11,6 +11,7 @@
 #include "Engine/Engine.h"
 #include "DrawDebugHelpers.h"
 #include "FWCharacter.h"
+#include "Components/CapsuleComponent.h"
 #include "FWCameraRig.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NavigationSystem.h"
@@ -995,9 +996,27 @@ void AFWPlayerController::HandlePlayerAdded(int32 PlayerId, const FString& Usern
 		return;
 	}
 
+	// The server's Z can't be trusted for spawning: it's either the clicked floor point (capsule would be
+	// half inside the floor) or the 0,0,0 spawn placeholder (under the terrain on some maps). Either way the
+	// avatar fell through the world - so stand it on whatever floor is under that XY instead.
+	FVector AvatarSpawnLocation = Location;
+	const float HalfHeight = GetDefault<AFWCharacter>()->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	FHitResult FloorHit;
+	const FVector TraceStart(Location.X, Location.Y, Location.Z + 2000.f);
+	const FVector TraceEnd(Location.X, Location.Y, Location.Z - 10000.f);
+	if (World->LineTraceSingleByChannel(FloorHit, TraceStart, TraceEnd, MoveTraceChannel)) // same channel the floor answers for clicks
+	{
+		AvatarSpawnLocation = FloorHit.ImpactPoint + FVector(0.f, 0.f, HalfHeight + 2.f);
+	}
+	else if (const APawn* MyPawn = GetPawn())
+	{
+		// No floor under that XY (outside this map) - put it next to us rather than in the void.
+		AvatarSpawnLocation = MyPawn->GetActorLocation();
+	}
+
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AFWCharacter* Avatar = World->SpawnActor<AFWCharacter>(AFWCharacter::StaticClass(), Location, FRotator::ZeroRotator, Params);
+	AFWCharacter* Avatar = World->SpawnActor<AFWCharacter>(AFWCharacter::StaticClass(), AvatarSpawnLocation, FRotator::ZeroRotator, Params);
 	if (Avatar)
 	{
 		Avatar->bIsRemoteAvatar = true;
