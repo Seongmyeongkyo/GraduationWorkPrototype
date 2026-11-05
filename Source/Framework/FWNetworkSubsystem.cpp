@@ -106,9 +106,10 @@ void UFWNetworkSubsystem::SendBytes(const void* Data, int32 NumBytes)
 	Socket->Send(static_cast<const uint8*>(Data), NumBytes, BytesSent);
 }
 
-void UFWNetworkSubsystem::SendLogin(const FString& Username)
+void UFWNetworkSubsystem::SendLogin(const FString& Username, const FVector& StartLocation)
 {
 	PendingLoginUsername = Username;
+	PendingLoginLocation = StartLocation;
 	bHasPendingLogin = true;
 	TrySendPendingLogin();
 }
@@ -126,6 +127,9 @@ void UFWNetworkSubsystem::TrySendPendingLogin()
 	FTCHARToUTF8 Utf8Username(*PendingLoginUsername);
 	const int32 CopyLen = FMath::Min(Utf8Username.Length(), MAX_NAME_LEN - 1);
 	FMemory::Memcpy(Packet.username, Utf8Username.Get(), CopyLen);
+	Packet.x = PendingLoginLocation.X;
+	Packet.y = PendingLoginLocation.Y;
+	Packet.z = PendingLoginLocation.Z;
 
 	SendBytes(&Packet, Packet.size);
 	bHasPendingLogin = false;

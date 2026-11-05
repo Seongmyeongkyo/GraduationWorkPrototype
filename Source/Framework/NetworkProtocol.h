@@ -37,11 +37,13 @@ namespace FWNet
 	};
 
 #pragma pack(push, 1)
+	// x/y/z = where our pawn actually started (PlayerStart), so other players see us appear right there.
 	struct C2S_Login
 	{
 		uint8_t size;
 		PACKET_TYPE type;
 		char username[MAX_NAME_LEN];
+		float x, y, z;
 	};
 
 	// Destination the player clicked, in Unreal world-space units.

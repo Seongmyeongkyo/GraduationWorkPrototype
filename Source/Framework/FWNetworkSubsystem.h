@@ -63,9 +63,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network")
 	bool IsServerAuthoritative() const;
 
-	/** Queues the login packet; sent as soon as the connection finishes if not connected yet. */
+	/**
+	 * Queues the login packet; sent as soon as the connection finishes if not connected yet.
+	 * StartLocation = where our pawn spawned, so the server makes everyone else spawn our avatar right there.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Network")
-	void SendLogin(const FString& Username);
+	void SendLogin(const FString& Username, const FVector& StartLocation);
 
 	UFUNCTION(BlueprintCallable, Category = "Network")
 	void SendMove(const FVector& Destination);
@@ -159,4 +162,5 @@ private:
 
 	bool bHasPendingLogin = false;
 	FString PendingLoginUsername;
+	FVector PendingLoginLocation = FVector::ZeroVector;
 };

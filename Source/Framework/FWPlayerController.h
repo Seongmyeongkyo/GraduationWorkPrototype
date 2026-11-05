@@ -316,6 +316,11 @@ private:
 
 	UFWNetworkSubsystem* GetNetwork() const;
 
+	/** Sends the login (with our pawn's spawn point) once the connection has started and we have a pawn. */
+	void TrySendLogin();
+	bool bServerConnectStarted = false;
+	bool bLoginSent = false;
+
 	/**
 	 * Server connected: sends the skill request toward the cursor; mana is checked/spent on the server and the skill fires in HandlePlayerSkill.
 	 * No server: applies the same mana rule locally and fires immediately.

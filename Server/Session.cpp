@@ -302,7 +302,19 @@ void SESSION::process_packet(unsigned char* p) {
         C2S_Login* packet = reinterpret_cast<C2S_Login*>(p);
         memset(m_username, 0, MAX_NAME_LEN);
         strncpy_s(m_username, packet->username, MAX_NAME_LEN - 1);
-        Logger::Log("[LOGIN] id=" + to_string(m_id) + " ip=" + m_ip + " username=" + m_username);
+
+        // 클라이언트의 실제 시작 위치에서 멈춰 있는 상태로 시작 (아래 ADD_PLAYER가 이 위치로 나감).
+        // NaN/Inf나 터무니없이 먼 값(100km 밖)이면 무시하고 SPAWN 기본값 유지.
+        constexpr float MAX_COORD = 10000000.f;
+        if (std::isfinite(packet->x) && std::isfinite(packet->y) && std::isfinite(packet->z)
+            && std::fabs(packet->x) < MAX_COORD && std::fabs(packet->y) < MAX_COORD && std::fabs(packet->z) < MAX_COORD) {
+            m_x = m_start_x = packet->x;
+            m_y = m_start_y = packet->y;
+            m_z = m_start_z = packet->z;
+            m_move_start_time = std::chrono::steady_clock::now();
+        }
+        Logger::Log("[LOGIN] id=" + to_string(m_id) + " ip=" + m_ip + " username=" + m_username
+            + " pos=(" + to_string(m_x) + ", " + to_string(m_y) + ", " + to_string(m_z) + ")");
         send_avatar_info();
         send_mana_update();
 

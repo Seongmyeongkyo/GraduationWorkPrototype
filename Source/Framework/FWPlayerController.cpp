@@ -214,7 +214,8 @@ void AFWPlayerController::BeginPlay()
 
 		if (Net->ConnectToServer(ServerIP, ServerPort))
 		{
-			Net->SendLogin(PlayerUsername);
+			bServerConnectStarted = true;
+			TrySendLogin();
 		}
 	}
 }
@@ -227,6 +228,23 @@ void AFWPlayerController::OnPossess(APawn* InPawn)
 		CameraRig->SnapTo(InPawn->GetActorLocation());
 		SetViewTarget(CameraRig);
 	}
+
+	TrySendLogin(); // possession may come after BeginPlay
+}
+
+void AFWPlayerController::TrySendLogin()
+{
+	// Needs both: the connection attempt (BeginPlay) and our pawn (possession), in either order.
+	// The pawn's spawn point goes with the login so others see us appear right there instead of
+	// spawning us at the server's default and watching us walk over.
+	const APawn* MyPawn = GetPawn();
+	UFWNetworkSubsystem* Net = GetNetwork();
+	if (bLoginSent || !bServerConnectStarted || !MyPawn || !Net)
+	{
+		return;
+	}
+	Net->SendLogin(PlayerUsername, MyPawn->GetActorLocation());
+	bLoginSent = true;
 }
 
 UFWNetworkSubsystem* AFWPlayerController::GetNetwork() const

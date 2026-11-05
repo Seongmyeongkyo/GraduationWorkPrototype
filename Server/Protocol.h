@@ -19,8 +19,8 @@ constexpr float MANA_REGEN_PER_SECOND = 5.f;
 // 현재 위치를 추정한다. 클라이언트 AFWCharacter의 MaxWalkSpeed(600)와 같아야 한다.
 constexpr float MOVE_SPEED = 600.f;
 
-// 접속 직후 위치. 클라이언트가 실제로 시작하는 PlayerStart 좌표로 맞춰야 다른 화면에서 원점에 나타나지 않는다.
-// (임시) 지금은 원점. 나중에 서버가 팀별 시작 지점을 정하면 그쪽으로 교체.
+// 로그인 전 기본 위치. 로그인하면 클라이언트가 보낸 실제 시작 위치(C2S_Login의 x/y/z)로 바뀐다.
+// 그 값이 비정상일 때만 이 값이 남는다. 나중에 서버가 팀별 시작 지점을 정하면 그쪽으로 교체.
 constexpr float SPAWN_X = 0.f;
 constexpr float SPAWN_Y = 0.f;
 constexpr float SPAWN_Z = 0.f;
@@ -57,10 +57,12 @@ enum PACKET_TYPE : uint8_t {
 };
 
 #pragma pack(push, 1) // 패딩 제거 (클라이언트와 바이트 배치 일치)
+// x/y/z = 클라이언트 캐릭터가 실제로 시작한 위치 (PlayerStart). 다른 플레이어에게 이 자리에서 바로 나타나게 한다.
 struct C2S_Login {
     uint8_t size;
     PACKET_TYPE type;
     char username[MAX_NAME_LEN];
+    float x, y, z;
 };
 
 // 클릭한 목적지(언리얼 월드 좌표). 서버는 이동을 계산하지 않고 중계만 한다.
