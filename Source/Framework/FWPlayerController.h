@@ -196,7 +196,7 @@ protected:
 
 	/** true = 리그가 캐릭터를 매 프레임 따라감 false = 자유 팬(엣지 이동) **/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera")
-	bool bCameraLockedToPawn = false;
+	bool bCameraLockedToPawn = true;
 
 	// ---- 스킬 조준 (범위 표시) ----
 	/** 범위 표시를 띄우고 발동하는 방식 **/
@@ -321,6 +321,18 @@ private:
 	bool bServerConnectStarted = false;
 	bool bLoginSent = false;
 
+	/** 플레이어 ID로 시작 위치 설정 **/
+	bool FindStartLocationForPlayer(int32 PlayerId, FVector& OutLocation) const;
+
+	/** 그 XY 아래 바닥을 찾아 원격 아바타 캡슐이 서는 위치를 돌려줌. 바닥이 없으면 false **/
+	bool FindAvatarFloorLocation(const FVector& Location, FVector& OutLocation) const;
+
+	/** 원격 아바타를 그 XY 의 바닥 위로 순간이동 (걷지 않음) **/
+	void TeleportRemoteAvatar(AFWCharacter* Avatar, const FVector& Location);
+
+	/** 원격 플레이어의 첫 이동이 그 플레이어 ID 의 시작 위치(Tag)면 순간이동하고 true **/
+	bool TryTeleportToSpawnStart(int32 PlayerId, AFWCharacter* Avatar, const FVector& Destination);
+
 	/**
 	 * Server connected: sends the skill request toward the cursor; mana is checked/spent on the server and the skill fires in HandlePlayerSkill.
 	 * No server: applies the same mana rule locally and fires immediately.
@@ -406,6 +418,9 @@ private:
 
 	/** 다른 플레이어를 나타내는, 이 클라이언트가 직접 스폰한 아바타들. */
 	TMap<int32, TWeakObjectPtr<AFWCharacter>> RemoteAvatars;
+
+	/** 첫 이동(로그인 직후 시작 위치 맞추기)을 이미 받은 원격 플레이어 ID **/
+	TSet<int32> SpawnSyncedPlayerIds;
 
 	/** Bushes the local pawn currently overlaps (where two bushes overlap, the last one entered counts). */
 	TArray<int32> OverlappingBushIds;

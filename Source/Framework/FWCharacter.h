@@ -33,6 +33,9 @@ public:
 	/** 원격 아바타가 걸어갈 목표 지점을 설정합니다(로컬로 조작되는 폰에는 사용하지 않음). */
 	void SetRemoteDestination(const FVector& Destination);
 
+	/** 원격 아바타의 이동 목표를 지우고 즉시 정지 (순간이동 직후 사용) **/
+	void StopRemoteMovement();
+
 private:
 	/** 원격 아바타를 목표 지점으로 이동시킴 (Tick 에서 호출, bIsRemoteAvatar 일 때만) */
 	void MoveTowardRemoteDestination(float DeltaSeconds);

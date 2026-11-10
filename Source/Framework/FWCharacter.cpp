@@ -154,6 +154,14 @@ void AFWCharacter::SetRemoteDestination(const FVector& Destination)
 	}
 }
 
+void AFWCharacter::StopRemoteMovement()
+{
+	bHasRemoteDestination = false;
+	RemotePathPoints.Reset();
+	RemotePathIndex = 0;
+	GetCharacterMovement()->StopMovementImmediately();
+}
+
 void AFWCharacter::MoveTowardRemoteDestination(float DeltaSeconds)
 {
 	if (!bHasRemoteDestination)

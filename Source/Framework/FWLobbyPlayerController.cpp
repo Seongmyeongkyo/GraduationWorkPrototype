@@ -15,7 +15,7 @@ AFWLobbyPlayerController::AFWLobbyPlayerController()
 {
 	bShowMouseCursor = true;
 	bAutoManageActiveCameraTarget = false;
-	GameplayLevel = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Map/DefaultMap.DefaultMap")));
+	GameplayLevel = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Map/L_Round01_WarmForest_Nature.L_Round01_WarmForest_Nature")));
 }
 
 void AFWLobbyPlayerController::BeginPlay()

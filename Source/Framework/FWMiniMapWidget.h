@@ -38,7 +38,7 @@ public:
 
 	/** MiniMap이 담당하는 월드 크기 = SceneCapture의 Ortho Width **/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MiniMap")
-	float MiniMapWorldSize = 8000.f;
+	float MiniMapWorldSize = 11200.f;
 
 	/** MiniMap UI 우클릭 이벤트 (캐릭터 이동) **/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MiniMap")

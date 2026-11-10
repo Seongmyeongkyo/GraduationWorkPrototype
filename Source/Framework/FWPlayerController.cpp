@@ -27,6 +27,8 @@
 #include "TimerManager.h"                   // SetTimerForNextTick
 #include "InputCoreTypes.h"                 // EKeys
 #include "FWSkillIndicator.h"
+#include "EngineUtils.h"					// TActorIterator
+#include "GameFramework/PlayerStart.h"		// APlayerStart
 #include "FWNetworkSubsystem.h"
 
 AFWPlayerController::AFWPlayerController()
@@ -251,6 +253,92 @@ UFWNetworkSubsystem* AFWPlayerController::GetNetwork() const
 {
 	UGameInstance* GI = GetGameInstance();
 	return GI ? GI->GetSubsystem<UFWNetworkSubsystem>() : nullptr;
+}
+
+bool AFWPlayerController::FindStartLocationForPlayer(int32 PlayerId, FVector& OutLocation) const
+{
+	UWorld* World = GetWorld();
+	if (!World || PlayerId < 0) {
+		return false;
+	}
+
+	TArray<APlayerStart*> Starts;
+	for (TActorIterator<APlayerStart> It(World); It; ++It) {
+		Starts.Add(*It);
+	}
+	if (Starts.Num() == 0) {
+		return false;
+	}
+
+	// Player Start Tag 가 플레이어 ID 와 같은 것
+	const FName WantedTag(*FString::FromInt(PlayerId));
+	for (const APlayerStart* Start : Starts) {
+		if (Start->PlayerStartTag == WantedTag) {
+			OutLocation = Start->GetActorLocation();
+			return true;
+		}
+	}
+
+	// 태그가 없으면 이름순으로 정렬해서 ID 로 고름 (모든 클라이언트에서 같은 순서)
+	Starts.Sort([](const APlayerStart& A, const APlayerStart& B) { return A.GetName() < B.GetName(); });
+	OutLocation = Starts[PlayerId % Starts.Num()]->GetActorLocation();
+	return true;
+}
+
+bool AFWPlayerController::FindAvatarFloorLocation(const FVector& Location, FVector& OutLocation) const
+{
+	UWorld* World = GetWorld();
+	if (!World) {
+		return false;
+	}
+
+	// HandlePlayerAdded 와 같은 기준: Ground 채널로 그 XY 의 바닥을 찾고 캡슐 반높이만큼 띄움
+	const float HalfHeight = GetDefault<AFWCharacter>()->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	FHitResult FloorHit;
+	const FVector TraceStart(Location.X, Location.Y, Location.Z + 2000.f);
+	const FVector TraceEnd(Location.X, Location.Y, Location.Z - 10000.f);
+	if (World->LineTraceSingleByChannel(FloorHit, TraceStart, TraceEnd, MoveTraceChannel)) {
+		OutLocation = FloorHit.ImpactPoint + FVector(0.f, 0.f, HalfHeight + 2.f);
+		return true;
+	}
+	return false;
+}
+
+void AFWPlayerController::TeleportRemoteAvatar(AFWCharacter* Avatar, const FVector& Location)
+{
+	if (!Avatar) {
+		return;
+	}
+
+	// 바닥을 못 찾으면 받은 위치 그대로 사용
+	FVector TeleportLocation = Location;
+	FindAvatarFloorLocation(Location, TeleportLocation);
+
+	Avatar->SetActorLocation(TeleportLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	Avatar->StopRemoteMovement();	// 남아 있던 원격 이동 목표와 속도를 지움 (경로 계산 없음)
+}
+
+bool AFWPlayerController::TryTeleportToSpawnStart(int32 PlayerId, AFWCharacter* Avatar, const FVector& Destination)
+{
+	// 이 플레이어에 대해 처음 받는 이동 정보인지 (한 번 받으면 이후는 평소대로 걸어감)
+	const bool bFirstMove = !SpawnSyncedPlayerIds.Contains(PlayerId);
+	SpawnSyncedPlayerIds.Add(PlayerId);
+	if (!bFirstMove || !Avatar) {
+		return false;
+	}
+
+	// 목적지가 그 플레이어 ID 의 시작 위치(PlayerStart Tag)일 때만 = 로그인 직후 위치 맞추기
+	FVector StartLocation;
+	if (!FindStartLocationForPlayer(PlayerId, StartLocation)) {
+		return false;
+	}
+	constexpr float SpawnMatchTolerance = 10.f;
+	if (FVector::Dist2D(Destination, StartLocation) > SpawnMatchTolerance) {
+		return false;
+	}
+
+	TeleportRemoteAvatar(Avatar, StartLocation);
+	return true;
 }
 
 void AFWPlayerController::SetupInputComponent()
@@ -1137,6 +1225,26 @@ void AFWPlayerController::HandleAvatarInfo(int32 PlayerId, FVector Location)
 	// 서버가 로그인 직후 나에게만 보내는 패킷. 다른 플레이어의 add/move 이벤트와
 	// 내 것을 구분하기 위해 ID만 기억해 둔다 (다시 스폰하지 않음).
 	LocalPlayerId = PlayerId;
+
+	// 내 ID 의 PlayerStart(Tag) 로 옮기고 서버에도 알려 줌
+	FVector StartLocation;
+	if (FindStartLocationForPlayer(PlayerId, StartLocation)) {
+		if (APawn* MyPawn = GetPawn()) {
+			StopMovement();                 // 진행 중이던 경로 이동 취소
+			bHasMoveDestination = false;
+			MyPawn->SetActorLocation(StartLocation, false, nullptr, ETeleportType::TeleportPhysics);
+			if (CameraRig) {
+				CameraRig->SnapTo(StartLocation);
+			}
+		}
+
+		if (UFWNetworkSubsystem* Net = GetNetwork()) {
+			Net->SendMove(StartLocation);	// 다른 클라이언트는 이 첫 이동을 순간이동으로 처리함
+		}
+		LastSentDestination = StartLocation;
+		LastMoveSendTime = GetWorld()->GetTimeSeconds();
+		bHasSentMove = true;
+	}
 }
 
 void AFWPlayerController::HandlePlayerAdded(int32 PlayerId, const FString& Username, FVector Location)
@@ -1152,14 +1260,21 @@ void AFWPlayerController::HandlePlayerAdded(int32 PlayerId, const FString& Usern
 		return;
 	}
 
+	// 서버가 아직 위치를 모르면 (SPAWN 기본값 0,0) 같은 규칙으로 그 플레이어의 시작 위치를 사용
+	FVector SourceLocation = Location;
+	FVector RuleStartLocation;
+	if (FVector2D(Location.X, Location.Y).IsNearlyZero(1.f) && FindStartLocationForPlayer(PlayerId, RuleStartLocation)) {
+		SourceLocation = RuleStartLocation;
+	}
+
 	// The server's Z can't be trusted for spawning: it's either the clicked floor point (capsule would be
 	// half inside the floor) or the 0,0,0 spawn placeholder (under the terrain on some maps). Either way the
 	// avatar fell through the world - so stand it on whatever floor is under that XY instead.
-	FVector AvatarSpawnLocation = Location;
+	FVector AvatarSpawnLocation = SourceLocation;
 	const float HalfHeight = GetDefault<AFWCharacter>()->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	FHitResult FloorHit;
-	const FVector TraceStart(Location.X, Location.Y, Location.Z + 2000.f);
-	const FVector TraceEnd(Location.X, Location.Y, Location.Z - 10000.f);
+	const FVector TraceStart(SourceLocation.X, SourceLocation.Y, SourceLocation.Z + 2000.f);
+	const FVector TraceEnd(SourceLocation.X, SourceLocation.Y, SourceLocation.Z - 10000.f);
 	if (World->LineTraceSingleByChannel(FloorHit, TraceStart, TraceEnd, MoveTraceChannel)) // same channel the floor answers for clicks
 	{
 		AvatarSpawnLocation = FloorHit.ImpactPoint + FVector(0.f, 0.f, HalfHeight + 2.f);
@@ -1191,6 +1306,7 @@ void AFWPlayerController::HandlePlayerRemoved(int32 PlayerId)
 		}
 		RemoteAvatars.Remove(PlayerId);
 	}
+	SpawnSyncedPlayerIds.Remove(PlayerId);	// ID 재사용 대비: 다음 접속자의 첫 이동을 다시 판정
 }
 
 void AFWPlayerController::HandlePlayerMoved(int32 PlayerId, FVector Destination)
@@ -1204,6 +1320,11 @@ void AFWPlayerController::HandlePlayerMoved(int32 PlayerId, FVector Destination)
 	{
 		if (Found->IsValid())
 		{
+			// 로그인 직후 시작 위치 맞추기면 걷지 않고 순간이동
+			if (TryTeleportToSpawnStart(PlayerId, Found->Get(), Destination))
+			{
+				return;
+			}
 			(*Found)->SetRemoteDestination(Destination);
 		}
 	}
