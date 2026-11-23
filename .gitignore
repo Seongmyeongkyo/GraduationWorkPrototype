@@ -119,3 +119,6 @@ __pycache__/
 
 Art/UI/LoginScreen/WindPreview/index.html
 
+
+# Local Tripo CLI context
+/.tripo/

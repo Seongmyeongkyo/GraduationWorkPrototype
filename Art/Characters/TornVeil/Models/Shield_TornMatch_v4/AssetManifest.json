@@ -1,0 +1,22 @@
+{
+  "status": "user_review_pending",
+  "asset": "Torn_Shield",
+  "revision": "v4_torn_colour_match",
+  "source": "Retexture_v2/Torn_Shield",
+  "geometry_changed": false,
+  "triangles": 14643,
+  "texture_size": 2048,
+  "metallic": 0,
+  "roughness": 0.83,
+  "changes": [
+    "Replaced bright ochre wood revision with dark desaturated grey-brown palette based on original shield and Torn body.",
+    "Retained UV grain and normal map; no geometry generation."
+  ],
+  "cost_credits": 0,
+  "previous_revision_v3": "rejected_by_user_too_bright_and_mismatched",
+  "remaining_limitations": [
+    "No amber sap emission mask authored.",
+    "Shield rear attachment structure remains unfinished.",
+    "No rigging or Unreal integration."
+  ]
+}
