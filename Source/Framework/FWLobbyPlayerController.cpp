@@ -120,6 +120,11 @@ void AFWLobbyPlayerController::ContinueAfterMatchComplete()
 	GetWorldTimerManager().ClearTimer(MatchCompleteTimer);
 	bMatching = false;
 	bStartingGame = true;
+	// 새 매칭이 끝날 때마다 이전 캐릭터 선택 결과를 비움 (새 선택 세션 시작)
+	if (UFWMenuSessionSubsystem* Session = GetGameInstance()->GetSubsystem<UFWMenuSessionSubsystem>())
+	{
+		Session->ResetCharacterSelection();
+	}
 	PendingDestination = Destination;
 	LobbyWidget->SetTravelling();
 	BeginScreenFade(true);
