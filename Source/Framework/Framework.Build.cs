@@ -7,7 +7,11 @@ public class Framework : ModuleRules
 	public Framework(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
+
+		// 기능별 하위 폴더(Character/, UI/HUD/ 등)의 헤더를 모듈 루트 기준 경로로 include 하기 위함.
+		// 예: #include "Character/FWCharacter.h"
+		PublicIncludePaths.Add(ModuleDirectory);
+
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "AIModule", "NavigationSystem", "AnimGraphRuntime", "UMG", "Slate", "SlateCore" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "Sockets", "Networking", "ImageCore", "RenderCore", "RHI" });

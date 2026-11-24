@@ -1,0 +1,1437 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "Game/FWPlayerController.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "InputMappingContext.h"
+#include "InputAction.h"
+#include "InputActionValue.h"
+#include "GameFramework/Pawn.h"
+#include "Engine/LocalPlayer.h"
+#include "Engine/Engine.h"
+#include "DrawDebugHelpers.h"
+#include "Character/FWCharacter.h"
+#include "Components/CapsuleComponent.h"
+#include "Camera/FWCameraRig.h"
+#include "Blueprint/AIBlueprintHelperLibrary.h"
+#include "NavigationSystem.h"
+#include "NavigationPath.h"
+#include "UObject/ConstructorHelpers.h"
+#include "UI/HUD/FWMiniMapWidget.h"
+#include "UI/HUD/FWStatusBarWidget.h"
+#include "Character/Components/FWHealManaActorComponent.h"
+#include "UI/HUD/FWChatWidget.h"
+#include "GameFramework/PlayerState.h"      // PlayerState->GetPlayerName()
+#include "Engine/GameViewportClient.h"      // 게임 뷰포트 포커스 복구
+#include "Widgets/SViewport.h"
+#include "TimerManager.h"                   // SetTimerForNextTick
+#include "InputCoreTypes.h"                 // EKeys
+#include "Skill/FWSkillIndicator.h"
+#include "EngineUtils.h"					// TActorIterator
+#include "GameFramework/PlayerStart.h"		// APlayerStart
+#include "Network/FWNetworkSubsystem.h"
+
+AFWPlayerController::AFWPlayerController()
+{
+	// 마우스 커서 온오프
+	bShowMouseCursor = true;
+	DefaultMouseCursor = EMouseCursor::Default;
+	// Keep the independent top-down rig as the view target after pawn possession/travel.
+	bAutoManageActiveCameraTarget = false;
+
+	/** MiniMap Widget Class 설정 **/
+	static ConstructorHelpers::FClassFinder<UFWMiniMapWidget> MiniMapClassFinder(TEXT("/Game/UI/WBP_MiniMap"));
+	if (MiniMapClassFinder.Succeeded()) {
+		MiniMapWidgetClass = MiniMapClassFinder.Class;
+	}
+	else {
+		UE_LOG(LogTemp, Error, TEXT("[FW] WBP_MiniMap 에셋을 못 찾음. 경로 확인: /Game/UI/WBP_MiniMap"));
+	}
+
+	/** StatusBar Widget Class 로드 **/
+	static ConstructorHelpers::FClassFinder<UFWStatusBarWidget>
+		StatusBarClassFinder(TEXT("/Game/UI/WBP_StatusBarWidget"));
+	if (StatusBarClassFinder.Succeeded()) {
+		StatusBarWidgetClass = StatusBarClassFinder.Class;
+	}
+	else {
+		UE_LOG(LogTemp, Error, TEXT("[FW] WBP_StatusBarWidget 에셋을 못 찾음: /Game/UI/WBP_StatusBarWidget"));
+	}
+
+	/** Chat Widget Class 로드 **/
+	static ConstructorHelpers::FClassFinder<UFWChatWidget>
+		ChatClassFinder(TEXT("/Game/UI/WBP_Chat"));
+	if (ChatClassFinder.Succeeded()) {
+		ChatWidgetClass = ChatClassFinder.Class;
+	}
+	else {
+		UE_LOG(LogTemp, Error, TEXT("[FW] WBP_Chat 에셋을 못 찾음: /Game/UI/WBP_Chat"));
+	}
+
+	/** 스킬별 범위 표시 기본값 (임시 값 - 스킬 기획에 맞게 조정) **/
+	SkillAimSpecs[0].Range = 1100.f;  SkillAimSpecs[0].Width = 120.f;   // Q
+	SkillAimSpecs[1].Range = 800.f;   SkillAimSpecs[1].Width = 180.f;   // W
+	SkillAimSpecs[2].Range = 600.f;   SkillAimSpecs[2].Width = 100.f;   // E
+	SkillAimSpecs[3].Range = 1400.f;  SkillAimSpecs[3].Width = 260.f;   // R
+
+	/** 스킬별 쿨타임과 데미지 (임시 값 - 스킬 기획에 맞게 조정) **/
+	SkillAimSpecs[0].Cooldown = 1.f;   SkillAimSpecs[0].Damage = 10;   // Q
+	SkillAimSpecs[1].Cooldown = 2.f;   SkillAimSpecs[1].Damage = 20;   // W
+	SkillAimSpecs[2].Cooldown = 3.f;   SkillAimSpecs[2].Damage = 30;   // E
+	SkillAimSpecs[3].Cooldown = 4.f;   SkillAimSpecs[3].Damage = 40;   // R
+}
+
+void AFWPlayerController::MoveToWorldLocation(const FVector& WorldLocation)
+{
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!NavSys) {
+		return;
+	}
+
+	// 클릭한 월드 지점을 navMesh 위의 가장 가까운 지점으로 스냅
+	FNavLocation ProjectedLocation;
+	if (NavSys->ProjectPointToNavigation(WorldLocation, ProjectedLocation, FVector(1000.f, 1000.f, 1000.f))) {
+		SetMoveDestination(ProjectedLocation.Location);
+	}
+
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[FW] 미니맵 클릭 지점이 NavMesh 밖: %s"), *WorldLocation.ToString());
+	}
+}
+
+void AFWPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem =
+		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
+	if (Subsystem && DefaultMappingContext)
+	{
+		Subsystem->AddMappingContext(DefaultMappingContext, /*Priority=*/0);
+	}
+
+	// 카메라 리그 스폰 & ViewTarget 설정
+	if (!CameraRigClass) {
+		CameraRigClass = AFWCameraRig::StaticClass();
+	}
+
+	if (GetWorld() && CameraRigClass) {
+		const FVector StartLocation = GetPawn() ? GetPawn()->GetActorLocation() : FVector::ZeroVector;
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Params.Owner = this;
+
+		CameraRig = GetWorld()->SpawnActor<AFWCameraRig>(CameraRigClass, StartLocation, FRotator::ZeroRotator, Params);
+
+		if (CameraRig) {
+			// 컨트롤러의 시점을 리그로 전환
+			SetViewTargetWithBlend(CameraRig, /*BlendTime=*/0.f);
+			UE_LOG(LogTemp, Log, TEXT("[FW] 카메라 리그 스폰 완료"));
+		}
+		else {
+			UE_LOG(LogTemp, Error, TEXT("[FW] 카메라 리그 스폰 실패"));
+		}
+	}
+
+	// 마우스를 뷰포트에 고정 (Edge Pan 시 마우스가 화면 밖으로 나가는 것을 방지)
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+	InputMode.SetHideCursorDuringCapture(false);	// 마우스 커서 항상 표시
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;	// 오류 방지용 마우스 커서 항상 표시
+
+	// MiniMap Widget 생성 & Viewport에 추가
+	if (MiniMapWidgetClass) {
+		MiniMapWidgetInstance = CreateWidget<UFWMiniMapWidget>(this, MiniMapWidgetClass);
+		if (MiniMapWidgetInstance) {
+			MiniMapWidgetInstance->AddToViewport(100);
+			UE_LOG(LogTemp, Log, TEXT("[FW] 미니맵 위젯 생성 완료"));
+		}
+	}
+
+	else {
+		UE_LOG(LogTemp, Error, TEXT("[FW-Diag] MiniMapWidgetClass 가 NULL"));
+	}
+
+	/** StatusBar Widget 생성(로컬 컨트롤러만 - 서버가 클라이언트 UI 만들지 않도록) **/
+	if (StatusBarWidgetClass && IsLocalController())	// 로컬 컨트롤러만 UI 생성
+	{
+		StatusBarWidgetInstance = CreateWidget<UFWStatusBarWidget>(this, StatusBarWidgetClass);
+		if (StatusBarWidgetInstance) {
+			StatusBarWidgetInstance->AddToViewport(50);  // ZOrder: 미니맵(100)보다 아래
+			UE_LOG(LogTemp, Log, TEXT("[FW] StatusBar 위젯 생성 완료"));
+		}
+	}
+
+	/** Chat Widget 생성 (로컬 컨트롤러만) **/
+	if (IsLocalController()) {
+		if (ChatWidgetClass) {
+			ChatWidgetInstance = CreateWidget<UFWChatWidget>(this, ChatWidgetClass);
+			if (ChatWidgetInstance) {
+				ChatWidgetInstance->AddToViewport(60);   // StatusBar(50) 위, MiniMap(100) 아래
+				ChatWidgetInstance->OnMessageSubmitted.AddDynamic(this, &AFWPlayerController::HandleChatMessageSubmitted);
+				ChatWidgetInstance->OnChatClosed.AddDynamic(this, &AFWPlayerController::HandleChatClosed);
+				UE_LOG(LogTemp, Log, TEXT("[FW] 채팅 위젯 생성 완료"));
+			}
+			else {
+				UE_LOG(LogTemp, Error, TEXT("[FW] 채팅 위젯 생성 실패"));
+			}
+		}
+		else {
+			UE_LOG(LogTemp, Error, TEXT("[FW] ChatWidgetClass 가 NULL — WBP_Chat 경로/부모 클래스 확인"));
+		}
+	}
+
+	/** 스킬 범위 표시 액터 스폰 (로컬 컨트롤러만) **/
+	if (IsLocalController() && GetWorld()) {
+		if (!SkillIndicatorClass) {
+			SkillIndicatorClass = AFWSkillIndicator::StaticClass();
+		}
+
+		FActorSpawnParameters IndicatorParams;
+		IndicatorParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		IndicatorParams.Owner = this;
+
+		SkillIndicator = GetWorld()->SpawnActor<AFWSkillIndicator>(SkillIndicatorClass, FVector::ZeroVector, FRotator::ZeroRotator, IndicatorParams);
+		if (!SkillIndicator) {
+			UE_LOG(LogTemp, Error, TEXT("[FW] 스킬 범위 표시 액터 스폰 실패"));
+		}
+	}
+
+	if (UFWNetworkSubsystem* Net = GetNetwork())
+	{
+		Net->OnLoginResult.AddDynamic(this, &AFWPlayerController::HandleLoginResult);
+		Net->OnAvatarInfo.AddDynamic(this, &AFWPlayerController::HandleAvatarInfo);
+		Net->OnPlayerAdded.AddDynamic(this, &AFWPlayerController::HandlePlayerAdded);
+		Net->OnPlayerRemoved.AddDynamic(this, &AFWPlayerController::HandlePlayerRemoved);
+		Net->OnPlayerMoved.AddDynamic(this, &AFWPlayerController::HandlePlayerMoved);
+		Net->OnPlayerHit.AddDynamic(this, &AFWPlayerController::HandlePlayerHit);
+		Net->OnPlayerSkill.AddDynamic(this, &AFWPlayerController::HandlePlayerSkill);
+		Net->OnSkillFailed.AddDynamic(this, &AFWPlayerController::HandleSkillFailed);
+		Net->OnManaUpdate.AddDynamic(this, &AFWPlayerController::HandleManaUpdate);
+		Net->OnChatReceived.AddDynamic(this, &AFWPlayerController::HandleChatReceived);
+		Net->OnPlayerVisibility.AddDynamic(this, &AFWPlayerController::HandlePlayerVisibility);
+		Net->OnConnectionFailed.AddDynamic(this, &AFWPlayerController::HandleConnectionFailed);
+
+		if (Net->ConnectToServer(ServerIP, ServerPort))
+		{
+			bServerConnectStarted = true;
+			TrySendLogin();
+		}
+	}
+}
+
+void AFWPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	if (CameraRig && InPawn)
+	{
+		CameraRig->SnapTo(InPawn->GetActorLocation());
+		SetViewTarget(CameraRig);
+	}
+
+	TrySendLogin(); // possession may come after BeginPlay
+}
+
+void AFWPlayerController::TrySendLogin()
+{
+	// Needs both: the connection attempt (BeginPlay) and our pawn (possession), in either order.
+	// The pawn's spawn point goes with the login so others see us appear right there instead of
+	// spawning us at the server's default and watching us walk over.
+	const APawn* MyPawn = GetPawn();
+	UFWNetworkSubsystem* Net = GetNetwork();
+	if (bLoginSent || !bServerConnectStarted || !MyPawn || !Net)
+	{
+		return;
+	}
+	Net->SendLogin(PlayerUsername, MyPawn->GetActorLocation());
+	bLoginSent = true;
+}
+
+UFWNetworkSubsystem* AFWPlayerController::GetNetwork() const
+{
+	UGameInstance* GI = GetGameInstance();
+	return GI ? GI->GetSubsystem<UFWNetworkSubsystem>() : nullptr;
+}
+
+bool AFWPlayerController::FindStartLocationForPlayer(int32 PlayerId, FVector& OutLocation) const
+{
+	UWorld* World = GetWorld();
+	if (!World || PlayerId < 0) {
+		return false;
+	}
+
+	TArray<APlayerStart*> Starts;
+	for (TActorIterator<APlayerStart> It(World); It; ++It) {
+		Starts.Add(*It);
+	}
+	if (Starts.Num() == 0) {
+		return false;
+	}
+
+	// Player Start Tag 가 플레이어 ID 와 같은 것
+	const FName WantedTag(*FString::FromInt(PlayerId));
+	for (const APlayerStart* Start : Starts) {
+		if (Start->PlayerStartTag == WantedTag) {
+			OutLocation = Start->GetActorLocation();
+			return true;
+		}
+	}
+
+	// 태그가 없으면 이름순으로 정렬해서 ID 로 고름 (모든 클라이언트에서 같은 순서)
+	Starts.Sort([](const APlayerStart& A, const APlayerStart& B) { return A.GetName() < B.GetName(); });
+	OutLocation = Starts[PlayerId % Starts.Num()]->GetActorLocation();
+	return true;
+}
+
+bool AFWPlayerController::FindAvatarFloorLocation(const FVector& Location, FVector& OutLocation) const
+{
+	UWorld* World = GetWorld();
+	if (!World) {
+		return false;
+	}
+
+	// HandlePlayerAdded 와 같은 기준: Ground 채널로 그 XY 의 바닥을 찾고 캡슐 반높이만큼 띄움
+	const float HalfHeight = GetDefault<AFWCharacter>()->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	FHitResult FloorHit;
+	const FVector TraceStart(Location.X, Location.Y, Location.Z + 2000.f);
+	const FVector TraceEnd(Location.X, Location.Y, Location.Z - 10000.f);
+	if (World->LineTraceSingleByChannel(FloorHit, TraceStart, TraceEnd, MoveTraceChannel)) {
+		OutLocation = FloorHit.ImpactPoint + FVector(0.f, 0.f, HalfHeight + 2.f);
+		return true;
+	}
+	return false;
+}
+
+void AFWPlayerController::TeleportRemoteAvatar(AFWCharacter* Avatar, const FVector& Location)
+{
+	if (!Avatar) {
+		return;
+	}
+
+	// 바닥을 못 찾으면 받은 위치 그대로 사용
+	FVector TeleportLocation = Location;
+	FindAvatarFloorLocation(Location, TeleportLocation);
+
+	Avatar->SetActorLocation(TeleportLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	Avatar->StopRemoteMovement();	// 남아 있던 원격 이동 목표와 속도를 지움 (경로 계산 없음)
+}
+
+bool AFWPlayerController::TryTeleportToSpawnStart(int32 PlayerId, AFWCharacter* Avatar, const FVector& Destination)
+{
+	// 이 플레이어에 대해 처음 받는 이동 정보인지 (한 번 받으면 이후는 평소대로 걸어감)
+	const bool bFirstMove = !SpawnSyncedPlayerIds.Contains(PlayerId);
+	SpawnSyncedPlayerIds.Add(PlayerId);
+	if (!bFirstMove || !Avatar) {
+		return false;
+	}
+
+	// 목적지가 그 플레이어 ID 의 시작 위치(PlayerStart Tag)일 때만 = 로그인 직후 위치 맞추기
+	FVector StartLocation;
+	if (!FindStartLocationForPlayer(PlayerId, StartLocation)) {
+		return false;
+	}
+	constexpr float SpawnMatchTolerance = 10.f;
+	if (FVector::Dist2D(Destination, StartLocation) > SpawnMatchTolerance) {
+		return false;
+	}
+
+	TeleportRemoteAvatar(Avatar, StartLocation);
+	return true;
+}
+
+void AFWPlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+
+	// Play 시점에 /Game/Input 의 에셋을 새로 로드 (에디터에서 지정 안 했을 때만).
+	// LoadObject 는 현재 저장된 에셋을 그대로 돌려주므로 매핑이 항상 최신이다.
+	if (!DefaultMappingContext) { DefaultMappingContext = LoadObject<UInputMappingContext>(nullptr, TEXT("/Game/Input/IMC_Default.IMC_Default")); }
+	if (!MoveAction)   { MoveAction   = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/IA_Move.IA_Move")); }
+	if (!ZoomAction)   { ZoomAction   = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/IA_Zoom.IA_Zoom")); }
+	if (!SkillQAction) { SkillQAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/IA_SkillQ.IA_SkillQ")); }
+	if (!SkillWAction) { SkillWAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/IA_SkillW.IA_SkillW")); }
+	if (!SkillEAction) { SkillEAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/IA_SkillE.IA_SkillE")); }
+	if (!SkillRAction) { SkillRAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/IA_SkillR.IA_SkillR")); }
+	
+	// 카메라 리센터 액션 로드
+	if (!RecenterCameraAction) {
+		RecenterCameraAction = LoadObject<UInputAction>(
+			nullptr, TEXT("/Game/Input/IA_RecenterCamera.IA_RecenterCamera")
+		);
+	}
+
+	// 카메라 토글 액션 로드
+	if (!CameraLockToggleAction) {
+		CameraLockToggleAction = LoadObject<UInputAction>(
+			nullptr, TEXT("/Game/Input/IA_CameraLockToggle.IA_CameraLockToggle"));
+	}
+
+	// 채팅 열기 액션 로드 (Enter)
+	if (!OpenChatAction) {
+		OpenChatAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/IA_OpenChat.IA_OpenChat"));
+	}
+
+	UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(InputComponent);
+	if (!EIC)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[FW] InputComponent 가 EnhancedInputComponent 가 아닙니다. "
+			"Project Settings > Input 의 Default Input Component Class 를 확인하세요."));
+		return;
+	}
+
+	// 에셋이 지정되지 않았으면(로드 실패 등) 바인딩을 건너뛰어 크래시를 방지한다.
+	if (MoveAction)   { EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AFWPlayerController::OnMoveTriggered); }  // 우클릭 이동
+	if (ZoomAction)   { EIC->BindAction(ZoomAction, ETriggerEvent::Triggered, this, &AFWPlayerController::OnZoom); }           // 마우스 휠 줌
+	if (SkillQAction) { EIC->BindAction(SkillQAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillPressed, 0); }
+	if (SkillWAction) { EIC->BindAction(SkillWAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillPressed, 1); }
+	if (SkillEAction) { EIC->BindAction(SkillEAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillPressed, 2); }
+	if (SkillRAction) { EIC->BindAction(SkillRAction, ETriggerEvent::Started, this, &AFWPlayerController::OnSkillPressed, 3); }
+
+	// 스킬 키를 떼는 순간 (누르고 떼기 방식의 발동 시점)
+	if (SkillQAction) { EIC->BindAction(SkillQAction, ETriggerEvent::Completed, this, &AFWPlayerController::OnSkillReleased, 0); }
+	if (SkillWAction) { EIC->BindAction(SkillWAction, ETriggerEvent::Completed, this, &AFWPlayerController::OnSkillReleased, 1); }
+	if (SkillEAction) { EIC->BindAction(SkillEAction, ETriggerEvent::Completed, this, &AFWPlayerController::OnSkillReleased, 2); }
+	if (SkillRAction) { EIC->BindAction(SkillRAction, ETriggerEvent::Completed, this, &AFWPlayerController::OnSkillReleased, 3); }
+
+	// 리센터 바인딩
+	if (RecenterCameraAction) {
+		EIC->BindAction(RecenterCameraAction, ETriggerEvent::Started, this, &AFWPlayerController::OnRecenterCamera);
+		EIC->BindAction(RecenterCameraAction, ETriggerEvent::Completed, this, &AFWPlayerController::OnRecenterCameraReleased);
+	}
+
+	if (CameraLockToggleAction) {
+		EIC->BindAction(CameraLockToggleAction, ETriggerEvent::Started, this, &AFWPlayerController::OnCameraLockToggle);
+	}
+
+	// 채팅창 바인딩
+	if (OpenChatAction) {
+		EIC->BindAction(OpenChatAction, ETriggerEvent::Started, this, &AFWPlayerController::OnOpenChat);
+	}
+}
+
+void AFWPlayerController::PlayerTick(float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+
+	FlushPendingMoveSend();
+	MoveTowardDestination();
+	DrawMoveMarker();
+	DrawMovePath();
+	UpdateEdgePanCamera(DeltaTime);	// 카메라 갱신
+	UpdateSkillAim();	// 스킬 범위 표시 갱신
+}
+
+// ----------------------------------------------------------------------------
+// 이동
+// ----------------------------------------------------------------------------
+void AFWPlayerController::OnMoveTriggered(const FInputActionValue& /*Value*/)
+{
+	// 채팅 입력 중 이동 허용 여부
+	if (IsChatInputActive() && !bAllowMouseMoveWhileChatting) {
+		return;
+	}
+
+	UpdateDestinationFromCursor();
+}
+
+void AFWPlayerController::UpdateDestinationFromCursor()
+{
+	FHitResult Hit;
+	if (!GetHitResultUnderCursor(MoveTraceChannel, /*bTraceComplex=*/false, Hit) || !Hit.bBlockingHit)
+	{
+		return;
+	}
+
+	FVector Destination = Hit.ImpactPoint;
+
+	// 우클릭 위치를 NavMesh 위 가장 가까운 위치로 보정
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+
+	if (NavSys) {
+		FNavLocation ProjectedLocation;
+		const FVector SearchExtent(500.f, 500.f, 500.f);	// 5m 반경 안에서 가장 가까운 navi 지점 검색
+
+		if (NavSys->ProjectPointToNavigation(Destination, ProjectedLocation, SearchExtent)) {
+			Destination = ProjectedLocation.Location;
+		}
+
+		else {
+			return;	// NavMesh 위에 없으면 이동 취소
+		}
+	}
+	SetMoveDestination(Destination);
+}
+
+void AFWPlayerController::SetMoveDestination(const FVector& Destination)
+{
+	CachedDestination = Destination;
+	bHasMoveDestination = true;
+
+	bMoveSendPending = true;
+	FlushPendingMoveSend();
+}
+
+void AFWPlayerController::FlushPendingMoveSend()
+{
+	if (!bMoveSendPending)
+	{
+		return;
+	}
+
+	const double Now = GetWorld()->GetTimeSeconds();
+	if (bHasSentMove)
+	{
+		if (Now - LastMoveSendTime < MoveSendInterval)
+		{
+			return; // 예약 유지 - 다음 PlayerTick에서 재시도
+		}
+		if (FVector::DistSquared(CachedDestination, LastSentDestination) < FMath::Square(MinMoveSendDistance))
+		{
+			bMoveSendPending = false; // 지난번에 보낸 곳과 사실상 같은 지점 - 보낼 필요 없음
+			return;
+		}
+	}
+
+	if (UFWNetworkSubsystem* Net = GetNetwork())
+	{
+		Net->SendMove(CachedDestination);
+	}
+	LastSentDestination = CachedDestination;
+	LastMoveSendTime = Now;
+	bHasSentMove = true;
+	bMoveSendPending = false;
+}
+
+void AFWPlayerController::MoveTowardDestination()
+{
+	if (!bHasMoveDestination)
+	{
+		return;
+	}
+
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn)
+	{
+		return;
+	}
+
+	// 평면 거리만 판단 (현재는)
+	const FVector ToTarget = CachedDestination - ControlledPawn->GetActorLocation();
+
+	if (FVector(ToTarget.X, ToTarget.Y, 0.f).SizeSquared() <= FMath::Square(DestinationAcceptanceRadius))
+	{
+		bHasMoveDestination = false; // 도착 → 정지
+		return;
+	}
+
+	// NavMesh 경로탐색이 필요해지면(장애물 우회 등) 이 직접 이동을
+	// UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, CachedDestination) 으로 교체
+
+
+	// NavMesh 위에 있으면 경로 이동, 아니면 직선 이동 폴백 (안전장치)
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	ANavigationData* NavData = NavSys ? NavSys->GetDefaultNavDataInstance(FNavigationSystem::DontCreate) : nullptr;
+
+	FNavLocation ProjectedLoc;
+	const bool bCharOnNavMesh = NavData && NavSys->ProjectPointToNavigation(
+		ControlledPawn->GetActorLocation(),
+		ProjectedLoc,
+		FVector(1000.f, 1000.f, 1000.f),
+		NavData);
+
+	if (bCharOnNavMesh)
+	{
+		UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, CachedDestination);
+	}
+	else
+	{
+		// NavMesh 밖으로 나갔거나 아직 준비 안 됨 - 직선 이동으로 계속
+		ControlledPawn->AddMovementInput(ToTarget.GetSafeNormal2D(), 1.f);
+	}
+}
+
+void AFWPlayerController::DrawMoveMarker()
+{
+	if (!bShowMoveMarker || !bHasMoveDestination)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// 우클릭 위치 표시
+	const FVector Center = CachedDestination + FVector(0.f, 0.f, 2.f); // z-fighting 방지
+	DrawDebugCircle(World, Center, MarkerRadius, 32, MarkerColor, false, -1.f, 0, 3.f,
+		FVector(1, 0, 0), FVector(0, 1, 0), false);
+	DrawDebugLine(World, CachedDestination, CachedDestination + FVector(0.f, 0.f, 120.f),
+		MarkerColor, false, -1.f, 0, 3.f);
+}
+
+// 엣지 팬 카메라 갱신
+void AFWPlayerController::UpdateEdgePanCamera(float DeltaTime)
+{
+	if (!CameraRig) { return; }
+
+	const bool bFollowPawn = bCameraLockedToPawn || bRecenterHeld;
+
+	if (bFollowPawn) {
+		CameraRig->SetPanDirection(FVector::ZeroVector);
+		if (APawn* MyPawn = GetPawn()) {
+			CameraRig->SnapTo(MyPawn->GetActorLocation());
+		}
+		return;   // 스페이스바 or 고정 시엔 엣지 팬 무시
+	}
+
+	// 뷰포트 크기
+	int32 ViewX = 0, ViewY = 0;
+	GetViewportSize(ViewX, ViewY);
+	if (ViewX <= 0 || ViewY <= 0) {
+		return;
+	}
+
+	// 마우스 위치 (좌상단 원점, 픽셀)
+	float MouseX = 0.f, MouseY = 0.f;
+	const bool bHasMouse = GetMousePosition(MouseX, MouseY);
+
+	// 엣지 팬 여부 판단
+	FVector2D PanInput = FVector2D::ZeroVector;
+	if (bHasMouse) {
+		if (MouseX <= EdgePanThreshold) {
+			PanInput.X = -1.f;
+		}
+		else if (MouseX >= ViewX - EdgePanThreshold) {
+			PanInput.X = 1.f;
+		}
+
+		if (MouseY <= EdgePanThreshold) {
+			PanInput.Y = -1.f;
+		}
+		else if (MouseY >= ViewY - EdgePanThreshold) {
+			PanInput.Y = 1.f;
+		}
+	}
+
+	// EdgeMode
+	// 방향만 전달, 실제 이동/감속은 CameraRig에서 관리
+	FVector WorldDirection = FVector(-PanInput.Y, PanInput.X, 0.f);
+
+	// 대각선 이동 시 속도 보정
+	if (WorldDirection.SizeSquared() > 1.f) {
+		WorldDirection.Normalize();
+	}
+
+	CameraRig->SetPanDirection(WorldDirection);
+}
+
+void AFWPlayerController::DrawMovePath()
+{
+	if (!bShowMovePath || !bHasMoveDestination) {
+		return;
+	}
+
+	APawn* MyPawn = GetPawn();
+	UWorld* World = GetWorld();
+	if (!MyPawn || !World) {
+		return;
+	}
+
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
+	if (!NavSys) {
+		return;
+	}
+
+	const FVector ZOffset(0.f, 0.f, PathZOffset);
+	const FVector Start = MyPawn->GetActorLocation();
+	const FVector End = CachedDestination;
+
+	// NavMesh 경로 쿼리 (장애물 우회 경로)
+	UNavigationPath* NavPath = NavSys->FindPathToLocationSynchronously(this, Start, End, MyPawn);
+
+	if (NavPath && NavPath->IsValid() && NavPath->PathPoints.Num() >= 2) {
+		// 세그먼트별로 라인 그리기
+		for (int32 i = 0; i < NavPath->PathPoints.Num() - 1; ++i) {
+			const FVector From = NavPath->PathPoints[i] + ZOffset;
+			const FVector To = NavPath->PathPoints[i + 1] + ZOffset;
+			DrawDebugLine(World, From, To, PathColor, false, -1.f, 0, PathThickness);
+		}
+	}
+	else {
+		// NavMesh 경로 실패 시 직선 폴백
+		DrawDebugLine(World, Start + ZOffset, End + ZOffset, PathColor, false, -1.f, 0, PathThickness);
+	}
+}
+
+// ----------------------------------------------------------------------------
+// 카메라 줌 ---> 변경점 (리그로 위임)
+// ----------------------------------------------------------------------------
+void AFWPlayerController::OnZoom(const FInputActionValue& Value)
+{
+	// 채팅이 열려 있는 동안 휠은 로그 스크롤 전용 (카메라 휠 차단)
+	if (IsChatInputActive()) { return; }
+
+	const float ScrollDelta = Value.Get<float>();
+	if (FMath::IsNearlyZero(ScrollDelta))
+	{
+		return;
+	}
+
+	if (CameraRig)
+	{
+		CameraRig->AddZoom(ScrollDelta);
+	}
+}
+
+// ----------------------------------------------------------------------------
+// 스킬
+// ----------------------------------------------------------------------------
+void AFWPlayerController::OnSkillQ(const FInputActionValue& /*Value*/) { RequestSkill(0); }
+void AFWPlayerController::OnSkillW(const FInputActionValue& /*Value*/) { RequestSkill(1); }
+void AFWPlayerController::OnSkillE(const FInputActionValue& /*Value*/) { RequestSkill(2); }
+void AFWPlayerController::OnSkillR(const FInputActionValue& /*Value*/) { RequestSkill(3); }
+
+void AFWPlayerController::RequestSkill(int32 SkillIndex)
+{
+	if (IsChatInputActive()) { return; }   // ← 추가: 채팅 입력 중에는 스킬 차단
+
+	// 캐릭터 유효성 체크
+	APawn* MyPawn = GetPawn();
+	if (!MyPawn)
+	{
+		return;
+	}
+
+	// 1. 스킬 사용 조건 확인 (발동 직전에 한 번 더 확인)
+	if (!CanUseSkill(SkillIndex, /*bNotify=*/true)) {
+		return;
+	}
+	
+	// 2. 스킬 판정 : 그린 범위(시작점, 방향)와 지금 화면의 상대 위치로 한 번만 계산해서 저장 (결과는 사용이 확정되면 알림)
+	FFWSkillUseState& UseState = SkillUseStates[SkillIndex];
+	UseState.Origin = SkillAimOrigin;
+	UseState.Direction = SkillAimDirection;
+	FindSkillTargets(SkillIndex, UseState.Origin, UseState.Direction, UseState.HitPlayerIds);
+
+	UFWNetworkSubsystem* Net = GetNetwork();
+	if (!Net || !Net->IsServerAuthoritative())
+	{
+		// Offline fallback: the server's mana rule, resolved locally and immediately.
+		AFWCharacter* MyChar = Cast<AFWCharacter>(MyPawn);
+		if (!MyChar || !MyChar->AttributeComp)
+		{
+			return;
+		}
+		if (MyChar->AttributeComp->TryConsumeManaOffline(FWNet::SKILL_MANA_COST))
+		{
+			UseSkill(SkillIndex);
+		}
+		else
+		{
+			HandleSkillFailed(SkillIndex); // same reaction as a server rejection
+		}
+		return;
+	}
+
+	// Aim toward the cursor; fall back to the pawn's facing if there's nothing under it.
+	FVector Dir = MyPawn->GetActorForwardVector();
+	FHitResult Hit;
+	if (GetHitResultUnderCursor(MoveTraceChannel, /*bTraceComplex=*/false, Hit) && Hit.bBlockingHit)
+	{
+		const FVector ToCursor = (Hit.ImpactPoint - MyPawn->GetActorLocation()).GetSafeNormal2D();
+		if (!ToCursor.IsNearlyZero())
+		{
+			Dir = ToCursor;
+		}
+	}
+
+	// 3. 서버에서 응답 올 때까지 같은 스킬을 중복 발동하지 않도록 잠금 (마나는 서버가 차감)
+	UseState.bWaitingServer = true;
+
+	Net->SendSkill(SkillIndex, Dir.X, Dir.Y);
+}
+
+void AFWPlayerController::OnRecenterCamera(const FInputActionValue& Value)
+{
+	if (IsChatInputActive()) { return; }   // 채팅 중 Space = 띄어쓰기
+	
+	UE_LOG(LogTemp, Log, TEXT("[FW] 리센터 스페이스바 눌림"));
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::White,
+			FString::Printf(TEXT(">> 스페이스바 눌림")));
+	}
+
+	bRecenterHeld = true;    // 홀드 상태 true
+	if (CameraRig) {
+		if (APawn* MyPawn = GetPawn()) {
+			CameraRig->SnapTo(MyPawn->GetActorLocation());
+		}
+	}
+}
+
+void AFWPlayerController::OnRecenterCameraReleased(const FInputActionValue& Value)
+{
+	UE_LOG(LogTemp, Log, TEXT("[FW] 리센터 스페이스바 뗌"));
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::White,
+			FString::Printf(TEXT(">> 스페이스바 뗌")));
+	}
+
+	bRecenterHeld = false;
+}
+
+void AFWPlayerController::OnCameraLockToggle(const FInputActionValue& Value)
+{
+	if (IsChatInputActive()) { return; }   // 채팅 중 Y = 글자
+
+	bCameraLockedToPawn = !bCameraLockedToPawn;
+
+	UE_LOG(LogTemp, Log, TEXT("[FW] 카메라 고정 토글: %s"),
+		bCameraLockedToPawn ? TEXT("ON") : TEXT("OFF"));
+
+	if (GEngine) {
+		GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::White,
+			FString::Printf(TEXT(">> 카메라 토글 %s"),
+				bCameraLockedToPawn ? TEXT("ON") : TEXT("OFF")));
+	}
+
+	if (bCameraLockedToPawn && CameraRig) {
+		if (APawn* MyPawn = GetPawn()) {
+			CameraRig->SnapTo(MyPawn->GetActorLocation());
+		}
+	}
+
+}
+
+void AFWPlayerController::ActivateSkill(int32 SkillIndex)
+{
+	static const TCHAR* SkillNames[] = { TEXT("Q"), TEXT("W"), TEXT("E"), TEXT("R") };
+	static const FColor SkillColors[] = { FColor::Red, FColor::Green, FColor::Blue, FColor::Yellow };
+
+	const bool bValid = (SkillIndex >= 0 && SkillIndex < 4);
+	const TCHAR* Name = bValid ? SkillNames[SkillIndex] : TEXT("?");
+	const FColor Color = bValid ? SkillColors[SkillIndex] : FColor::White;
+
+	UE_LOG(LogTemp, Log, TEXT("[FW] 스킬 발동: %s (index=%d)"), Name, SkillIndex);
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 4.0f, Color,
+			FString::Printf(TEXT(">> [%s] 스킬"), Name));
+	}
+}
+
+// ----------------------------------------------------------------------------
+// 스킬 사용 (쿨타임, 마나, 판정)
+// ----------------------------------------------------------------------------
+bool AFWPlayerController::CanUseSkill(int32 SkillIndex, bool bNotify) const
+{
+	if (SkillIndex < 0 || SkillIndex >= static_cast<int32>(UE_ARRAY_COUNT(SkillUseStates))) {
+		return false;
+	}
+
+	// 서버에 연결된 동안만 응답을 기다림 (연결이 끊기면 응답이 오지 않으므로 무시)
+	const UFWNetworkSubsystem* Net = GetNetwork();
+	const bool bOnline = Net && Net->IsServerAuthoritative();
+	const FFWSkillUseState& UseState = SkillUseStates[SkillIndex];
+	if (bOnline && UseState.bWaitingServer) {
+		return false;
+	}
+
+	// 쿨타임
+	const double Remaining = UseState.CooldownEndTime - GetWorld()->GetTimeSeconds();
+	if (Remaining > 0.0) {
+		if (bNotify && GEngine) {
+			GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, FString::Printf(TEXT("쿨타임 %.1f초"), Remaining));
+		}
+		return false;
+	}
+
+	// 마나: 서버 응답을 기다리는 스킬 몫은 이미 쓴 것으로 봄 (서버가 차감하기 전에 겹쳐 쓰지 않도록)
+	const AFWCharacter* MyChar = Cast<AFWCharacter>(GetPawn());
+	if (!MyChar || !MyChar->AttributeComp) {
+		return false;
+	}
+	int32 WaitingCount = 0;
+	if (bOnline) {
+		for (const FFWSkillUseState& Other : SkillUseStates) {
+			if (Other.bWaitingServer) {
+				++WaitingCount;
+			}
+		}
+	}
+	const float AvailableMana = MyChar->AttributeComp->GetCurrentMana() - FWNet::SKILL_MANA_COST * WaitingCount;
+	if (AvailableMana < FWNet::SKILL_MANA_COST) {
+		if (bNotify && GEngine) {
+			GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, TEXT("마나가 부족합니다"));
+		}
+		return false;
+	}
+	return true;
+}
+
+void AFWPlayerController::UseSkill(int32 SkillIndex)
+{
+	if (SkillIndex < 0 || SkillIndex >= static_cast<int32>(UE_ARRAY_COUNT(SkillUseStates))) {
+		return;
+	}
+
+	FFWSkillUseState& UseState = SkillUseStates[SkillIndex];
+	const FFWSkillAimSpec& Spec = SkillAimSpecs[SkillIndex];
+
+	// 쿨타임 시작 (스킬이 나간 순간부터)
+	UseState.CooldownEndTime = GetWorld()->GetTimeSeconds() + FMath::Max(Spec.Cooldown, 0.f);
+
+	// 디버그용 출력
+	UE_LOG(LogTemp, Log, TEXT("[FW] 스킬 사용: index=%d 시작=%s 방향=%s 맞은 대상=%d명"),
+		SkillIndex, *UseState.Origin.ToString(), *UseState.Direction.ToString(), UseState.HitPlayerIds.Num());
+
+	// 판정 결과 : 확정한 순간 범위에 몸이 닿은 다른 플레이어. 서버는 그대로 중계하고, 맞은 사람이 체력을 깎음
+	if (UFWNetworkSubsystem* Net = GetNetwork()) {
+		for (const int32 PlayerId : UseState.HitPlayerIds) {
+			Net->SendHit(PlayerId, Spec.Damage);
+		}
+	}
+	UseState.HitPlayerIds.Reset();
+
+	ActivateSkill(SkillIndex);
+}
+
+void AFWPlayerController::FindSkillTargets(int32 SkillIndex, const FVector& Origin, const FVector& Direction, TArray<int32>& OutPlayerIds) const
+{
+	OutPlayerIds.Reset();
+	if (SkillIndex < 0 || SkillIndex >= static_cast<int32>(UE_ARRAY_COUNT(SkillAimSpecs))) {
+		return;
+	}
+
+	// 그린 범위와 같은 길이, 폭으로 다른 플레이어만 한 번씩 확인. 물리 검사 없이 계산만 함
+	const FFWSkillAimSpec& Spec = SkillAimSpecs[SkillIndex];
+	for (const TPair<int32, TWeakObjectPtr<AFWCharacter>>& Pair : RemoteAvatars) {
+		if (Pair.Value.IsValid() && IsInSkillLine(Origin, Direction, Spec.Range, Spec.Width, Pair.Value.Get())) {
+			OutPlayerIds.Add(Pair.Key);
+		}
+	}
+}
+
+bool AFWPlayerController::IsInSkillLine(const FVector& Origin, const FVector& Direction, float Length, float Width, const AActor* Target) const
+{
+	const FVector Forward = Direction.GetSafeNormal2D();
+	if (!Target || Forward.IsNearlyZero()) {
+		return false;
+	}
+
+	// 대상 위치를 스킬 방향 기준 앞(X), 옆(Y) 거리로 바꿈 (높이 무시)
+	const FVector Right(-Forward.Y, Forward.X, 0.f);
+	const FVector ToTarget = Target->GetActorLocation() - Origin;
+	const float AlongX = static_cast<float>(FVector::DotProduct(ToTarget, Forward));
+	const float SideY = static_cast<float>(FVector::DotProduct(ToTarget, Right));
+
+	// 직사각형에서 대상 중심까지 가장 가까운 거리가 대상 반지름 이하이면 몸이 닿은 것
+	const float HalfWidth = FMath::Max(Width, 0.f) * 0.5f;
+	const float OutX = AlongX - FMath::Clamp(AlongX, 0.f, FMath::Max(Length, 0.f));
+	const float OutY = SideY - FMath::Clamp(SideY, -HalfWidth, HalfWidth);
+	const float Radius = Target->GetSimpleCollisionRadius();
+	return OutX * OutX + OutY * OutY <= Radius * Radius;
+}
+
+// ----------------------------------------------------------------------------
+// 스킬 조준 (범위 표시)
+// ----------------------------------------------------------------------------
+void AFWPlayerController::OnSkillPressed(const FInputActionValue& /*Value*/, int32 SkillIndex)
+{
+	if (IsChatInputActive()) { return; }   // 채팅 입력 중에는 스킬 차단
+
+	BeginSkillAim(SkillIndex);
+}
+
+void AFWPlayerController::OnSkillReleased(const FInputActionValue& /*Value*/, int32 SkillIndex)
+{
+	if (AimingSkillIndex != SkillIndex) {
+		return;
+	}
+
+	// 채팅창이 열리면서 눌려 있던 키가 풀린 경우는 발동하지 않고 취소
+	if (IsChatInputActive()) {
+		EndSkillAim();
+		return;
+	}
+
+	// 누르고 클릭 방식: 조준하던 키를 떼면 발동하지 않고 범위 표시만 끔
+	if (SkillCastMode == EFWSkillCastMode::HoldAndClick) {
+		EndSkillAim();
+	}
+}
+
+void AFWPlayerController::FlushPressedKeys()
+{
+	// 창이나 뷰포트가 포커스를 잃으면(Alt+Tab, 채팅창 열림 등) 엔진이 눌려 있던 키를 강제로 뗀 것으로 처리한다.
+	// 스킬 발동으로 이어지지 않도록 조준을 먼저 취소
+	EndSkillAim();
+
+	Super::FlushPressedKeys();
+}
+
+void AFWPlayerController::BeginSkillAim(int32 SkillIndex)
+{
+	if (SkillIndex < 0 || SkillIndex >= static_cast<int32>(UE_ARRAY_COUNT(SkillAimSpecs))) {
+		return;
+	}
+
+	// 쿨타임, 서버 응답 대기, 마나 확인 쓸 수 없으면 스킬 범위 그리기 X (조준 중이던 다른 스킬은 그대로)
+	if (!CanUseSkill(SkillIndex, /*bNotify=*/true)) {
+		return;
+	}
+
+	// 다른 스킬을 조준하던 중이면 그쪽은 취소
+	EndSkillAim();
+
+	const bool bHasAim = UpdateSkillAimFromCursor();
+
+	// 범위 표시를 쓰지 않는 스킬이거나 표시할 수 없는 상황이면 기존처럼 누르는 즉시 발동
+	if (!bHasAim || !SkillIndicator || !SkillAimSpecs[SkillIndex].bShowIndicator) {
+		FireSkill(SkillIndex);
+		return;
+	}
+
+	AimingSkillIndex = SkillIndex;
+	UpdateSkillAim();   // 키를 누른 프레임부터 바로 보이도록
+}
+
+void AFWPlayerController::CommitSkillAim()
+{
+	if (!IsAimingSkill()) {
+		return;
+	}
+
+	const int32 SkillIndex = AimingSkillIndex;
+
+	UpdateSkillAimFromCursor();   // 발동 직전의 커서 위치로 방향 확정
+	EndSkillAim();                // 범위 표시 끄기 (조준 결과는 남겨 둠)
+
+	FireSkill(SkillIndex);
+}
+
+void AFWPlayerController::EndSkillAim()
+{
+	AimingSkillIndex = INDEX_NONE;
+
+	if (SkillIndicator) {
+		SkillIndicator->HideIndicator();
+	}
+}
+
+void AFWPlayerController::UpdateSkillAim()
+{
+	if (!IsAimingSkill()) {
+		return;
+	}
+
+	// 조준 도중 채팅이 열리거나 캐릭터, 표시 액터가 없어지면 취소
+	if (IsChatInputActive() || !SkillIndicator || !UpdateSkillAimFromCursor()) {
+		EndSkillAim();
+		return;
+	}
+
+	// 누르면 표시 방식: 좌클릭 = 발동, 우클릭 = 취소 (우클릭 이동은 그대로 수행됨)
+	if (SkillCastMode == EFWSkillCastMode::PressAndClick) {
+		if (WasInputKeyJustPressed(EKeys::RightMouseButton)) {
+			EndSkillAim();
+			return;
+		}
+		if (WasInputKeyJustPressed(EKeys::LeftMouseButton)) {
+			CommitSkillAim();
+			return;
+		}
+	}
+
+	// 누르고 클릭 방식: 키를 누르고 있는 동안 좌클릭 = 발동 (키를 떼면 OnSkillReleased 에서 취소, 우클릭 이동은 그대로)
+	if (SkillCastMode == EFWSkillCastMode::HoldAndClick && WasInputKeyJustPressed(EKeys::LeftMouseButton)) {
+		CommitSkillAim();
+		return;
+	}
+
+	const FFWSkillAimSpec& Spec = SkillAimSpecs[AimingSkillIndex];
+	SkillIndicator->ShowLine(SkillAimOrigin, SkillAimDirection, Spec.Range, Spec.Width);
+}
+
+bool AFWPlayerController::UpdateSkillAimFromCursor()
+{
+	const APawn* MyPawn = GetPawn();
+	if (!MyPawn) {
+		return false;
+	}
+
+	// 시작점 = 캐릭터 발밑
+	SkillAimOrigin = MyPawn->GetActorLocation() - FVector(0.f, 0.f, MyPawn->GetSimpleCollisionHalfHeight());
+
+	// 방향 = 캐릭터 -> 커서가 가리키는 지면 (수평 성분만). 커서 아래에 지면이 없으면 캐릭터가 보는 방향
+	FVector Direction = MyPawn->GetActorForwardVector().GetSafeNormal2D();
+
+	FHitResult Hit;
+	if (GetHitResultUnderCursor(MoveTraceChannel, /*bTraceComplex=*/false, Hit) && Hit.bBlockingHit) {
+		const FVector ToCursor = (Hit.ImpactPoint - MyPawn->GetActorLocation()).GetSafeNormal2D();
+		if (!ToCursor.IsNearlyZero()) {
+			Direction = ToCursor;
+		}
+	}
+
+	// 방향을 구하지 못한 프레임에는 직전 방향 유지
+	if (!Direction.IsNearlyZero()) {
+		SkillAimDirection = Direction;
+	}
+
+	return true;
+}
+
+void AFWPlayerController::FireSkill(int32 SkillIndex)
+{
+	UE_LOG(LogTemp, Log, TEXT("[FW] 스킬 조준 확정: index=%d 시작=%s 방향=%s"),
+		SkillIndex, *SkillAimOrigin.ToString(), *SkillAimDirection.ToString());
+
+	// 기존 스킬 콜백을 그대로 발동 함수로 사용
+	switch (SkillIndex) {
+	case 0: OnSkillQ(FInputActionValue()); break;
+	case 1: OnSkillW(FInputActionValue()); break;
+	case 2: OnSkillE(FInputActionValue()); break;
+	case 3: OnSkillR(FInputActionValue()); break;
+	default: break;
+	}
+}
+
+// ----------------------------------------------------------------------------
+// 채팅
+// ----------------------------------------------------------------------------
+void AFWPlayerController::OnOpenChat(const FInputActionValue& /*Value*/)
+{
+	if (!ChatWidgetInstance) {
+		return;
+	}
+
+	// 이미 열려 있는데 Enter가 게임까지 왔다
+	// 입력창이 잠깐 포커스를 잃은 상태(마우스를 누르고 있는 중 등) → 지금 내용 전송
+	if (ChatWidgetInstance->IsChatOpen()) {
+		ChatWidgetInstance->SubmitInput();
+		return;
+	}
+
+	// Shift+Enter = 전체, Enter = 팀
+	const bool bShiftDown = IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift);
+	const EFWChatChannel OpenChannel = bShiftDown ? EFWChatChannel::All : EFWChatChannel::Team;
+
+	ApplyGameAndUIInputMode(false);   // 마우스는 계속 게임이 받음
+	ChatWidgetInstance->OpenChat(OpenChannel);
+}
+
+// The wire values (FWNet::CHAT_*) are just the enum's underlying values - catch any reordering at compile time.
+static_assert(static_cast<uint8>(EFWChatChannel::All) == FWNet::CHAT_ALL, "Chat channel mismatch");
+static_assert(static_cast<uint8>(EFWChatChannel::Team) == FWNet::CHAT_TEAM, "Chat channel mismatch");
+static_assert(static_cast<uint8>(EFWChatChannel::System) == FWNet::CHAT_SYSTEM, "Chat channel mismatch");
+
+void AFWPlayerController::HandleChatMessageSubmitted(EFWChatChannel Channel, const FString& MessageText)
+{
+	// Server connected: the line is shown when the server relays it back (HandleChatReceived),
+	// so every client sees the same order.
+	UFWNetworkSubsystem* Net = GetNetwork();
+	if (Net && Net->IsServerAuthoritative())
+	{
+		Net->SendChat(static_cast<int32>(Channel), MessageText);
+		return;
+	}
+
+	// 서버 미접속 시: 로컬 loopback으로 내 화면에만 표시
+	FString MyName = TEXT("Me");
+	if (PlayerState && !PlayerState->GetPlayerName().IsEmpty()) {
+		MyName = PlayerState->GetPlayerName();
+	}
+
+	if (ChatWidgetInstance) {
+		ChatWidgetInstance->AddIncomingMessage(Channel, MyName, MessageText);
+	}
+
+	// HandleChatClosed가 전송·취소 공통으로 처리
+}
+
+void AFWPlayerController::HandleChatClosed()
+{
+	ApplyGameAndUIInputMode(false);
+
+	// 입력창의 "Clear Keyboard Focus on Commit"이 이 콜백이 끝난 뒤에 실행됨
+	// 입력창이 닫힐 때 포커스를 주면 바로 지워지므로 다음 틱에 게임 뷰포트로 복구
+	GetWorldTimerManager().SetTimerForNextTick(this, &AFWPlayerController::RestoreGameViewportFocus);
+}
+
+bool AFWPlayerController::IsChatInputActive() const
+{
+	return ChatWidgetInstance && ChatWidgetInstance->IsChatOpen();
+}
+
+void AFWPlayerController::ApplyGameAndUIInputMode(bool bFocusGameViewport)
+{
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+	InputMode.SetHideCursorDuringCapture(false);
+
+	if (bFocusGameViewport) {
+		UGameViewportClient* GVC = GetWorld() ? GetWorld()->GetGameViewport() : nullptr;
+		if (GVC) {
+			TSharedPtr<SViewport> ViewportWidget = GVC->GetGameViewportWidget();
+			if (ViewportWidget.IsValid()) {
+				InputMode.SetWidgetToFocus(ViewportWidget);
+			}
+		}
+	}
+
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
+}
+
+void AFWPlayerController::RestoreGameViewportFocus()
+{
+	// 그 사이 채팅이 다시 열렸으면 건드리지 않음
+	if (IsChatInputActive()) {
+		return;
+	}
+
+	ApplyGameAndUIInputMode(true);
+}
+
+// ----------------------------------------------------------------------------
+// 네트워크 (Server 이벤트 처리)
+// ----------------------------------------------------------------------------
+void AFWPlayerController::HandleLoginResult(bool bSuccess, const FString& Message)
+{
+	UE_LOG(LogTemp, Log, TEXT("[FWNet] Login %s: %s"), bSuccess ? TEXT("success") : TEXT("failed"), *Message);
+}
+
+void AFWPlayerController::HandleConnectionFailed(const FString& Reason)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[FWNet] Connection failed: %s"), *Reason);
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Red,
+			FString::Printf(TEXT("서버에 연결할 수 없습니다 (%s). Server.exe가 실행 중인지 확인하세요."), *Reason));
+	}
+}
+
+void AFWPlayerController::HandleAvatarInfo(int32 PlayerId, FVector Location)
+{
+	// 서버가 로그인 직후 나에게만 보내는 패킷. 다른 플레이어의 add/move 이벤트와
+	// 내 것을 구분하기 위해 ID만 기억해 둔다 (다시 스폰하지 않음).
+	LocalPlayerId = PlayerId;
+
+	// 내 ID 의 PlayerStart(Tag) 로 옮기고 서버에도 알려 줌
+	FVector StartLocation;
+	if (FindStartLocationForPlayer(PlayerId, StartLocation)) {
+		if (APawn* MyPawn = GetPawn()) {
+			StopMovement();                 // 진행 중이던 경로 이동 취소
+			bHasMoveDestination = false;
+			MyPawn->SetActorLocation(StartLocation, false, nullptr, ETeleportType::TeleportPhysics);
+			if (CameraRig) {
+				CameraRig->SnapTo(StartLocation);
+			}
+		}
+
+		if (UFWNetworkSubsystem* Net = GetNetwork()) {
+			Net->SendMove(StartLocation);	// 다른 클라이언트는 이 첫 이동을 순간이동으로 처리함
+		}
+		LastSentDestination = StartLocation;
+		LastMoveSendTime = GetWorld()->GetTimeSeconds();
+		bHasSentMove = true;
+	}
+}
+
+void AFWPlayerController::HandlePlayerAdded(int32 PlayerId, const FString& Username, FVector Location)
+{
+	if (PlayerId == LocalPlayerId)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// 서버가 아직 위치를 모르면 (SPAWN 기본값 0,0) 같은 규칙으로 그 플레이어의 시작 위치를 사용
+	FVector SourceLocation = Location;
+	FVector RuleStartLocation;
+	if (FVector2D(Location.X, Location.Y).IsNearlyZero(1.f) && FindStartLocationForPlayer(PlayerId, RuleStartLocation)) {
+		SourceLocation = RuleStartLocation;
+	}
+
+	// The server's Z can't be trusted for spawning: it's either the clicked floor point (capsule would be
+	// half inside the floor) or the 0,0,0 spawn placeholder (under the terrain on some maps). Either way the
+	// avatar fell through the world - so stand it on whatever floor is under that XY instead.
+	FVector AvatarSpawnLocation = SourceLocation;
+	const float HalfHeight = GetDefault<AFWCharacter>()->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	FHitResult FloorHit;
+	const FVector TraceStart(SourceLocation.X, SourceLocation.Y, SourceLocation.Z + 2000.f);
+	const FVector TraceEnd(SourceLocation.X, SourceLocation.Y, SourceLocation.Z - 10000.f);
+	if (World->LineTraceSingleByChannel(FloorHit, TraceStart, TraceEnd, MoveTraceChannel)) // same channel the floor answers for clicks
+	{
+		AvatarSpawnLocation = FloorHit.ImpactPoint + FVector(0.f, 0.f, HalfHeight + 2.f);
+	}
+	else if (const APawn* MyPawn = GetPawn())
+	{
+		// No floor under that XY (outside this map) - put it next to us rather than in the void.
+		AvatarSpawnLocation = MyPawn->GetActorLocation();
+	}
+
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AFWCharacter* Avatar = World->SpawnActor<AFWCharacter>(AFWCharacter::StaticClass(), AvatarSpawnLocation, FRotator::ZeroRotator, Params);
+	if (Avatar)
+	{
+		Avatar->bIsRemoteAvatar = true;
+		Avatar->NetPlayerId = PlayerId;
+		RemoteAvatars.Add(PlayerId, Avatar);
+	}
+}
+
+void AFWPlayerController::HandlePlayerRemoved(int32 PlayerId)
+{
+	if (TWeakObjectPtr<AFWCharacter>* Found = RemoteAvatars.Find(PlayerId))
+	{
+		if (Found->IsValid())
+		{
+			(*Found)->Destroy();
+		}
+		RemoteAvatars.Remove(PlayerId);
+	}
+	SpawnSyncedPlayerIds.Remove(PlayerId);	// ID 재사용 대비: 다음 접속자의 첫 이동을 다시 판정
+}
+
+void AFWPlayerController::HandlePlayerMoved(int32 PlayerId, FVector Destination)
+{
+	if (PlayerId == LocalPlayerId)
+	{
+		return; // relay echoes our own move back to us; we're already moving locally.
+	}
+
+	if (TWeakObjectPtr<AFWCharacter>* Found = RemoteAvatars.Find(PlayerId))
+	{
+		if (Found->IsValid())
+		{
+			// 로그인 직후 시작 위치 맞추기면 걷지 않고 순간이동
+			if (TryTeleportToSpawnStart(PlayerId, Found->Get(), Destination))
+			{
+				return;
+			}
+			(*Found)->SetRemoteDestination(Destination);
+		}
+	}
+}
+
+void AFWPlayerController::HandlePlayerHit(int32 /*AttackerId*/, int32 TargetId, int32 Damage)
+{
+	// No enemy health bars yet - only react when we're the one who got hit.
+	if (TargetId != LocalPlayerId)
+	{
+		return;
+	}
+
+	if (AFWCharacter* MyChar = Cast<AFWCharacter>(GetPawn()))
+	{
+		if (MyChar->AttributeComp)
+		{
+			MyChar->AttributeComp->ApplyDamage(static_cast<float>(Damage));
+		}
+	}
+}
+
+void AFWPlayerController::HandlePlayerSkill(int32 PlayerId, int32 SkillIndex, float /*DirX*/, float /*DirY*/)
+{
+	// The server already spent the mana. No skill visuals for other players yet - only fire our own.
+	if (PlayerId == LocalPlayerId)
+	{
+		//서버가 마나를 확인하고 차감 -> 사용 확정이면 쿨타임, 저장된 판정 결과, 발동
+		if (SkillIndex >= 0 && SkillIndex < static_cast<int32>(UE_ARRAY_COUNT(SkillUseStates))) {
+			SkillUseStates[SkillIndex].bWaitingServer = false;
+			UseSkill(SkillIndex);
+		}
+	}
+}
+
+void AFWPlayerController::HandleSkillFailed(int32 SkillIndex)
+{
+	// 스킬 사용 거절 (마나 부족): 응답 대기를 풀고 저장해 둔 판정 결과는 버림. 쿨타임은 시작하지 않음
+	if (SkillIndex >= 0 && SkillIndex < static_cast<int32>(UE_ARRAY_COUNT(SkillUseStates))) {
+		SkillUseStates[SkillIndex].bWaitingServer = false;
+		SkillUseStates[SkillIndex].HitPlayerIds.Reset();
+	}
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, TEXT("마나가 부족합니다"));
+	}
+}
+
+void AFWPlayerController::HandleManaUpdate(float CurrentMana, float MaxMana)
+{
+	if (AFWCharacter* MyChar = Cast<AFWCharacter>(GetPawn()))
+	{
+		if (MyChar->AttributeComp)
+		{
+			MyChar->AttributeComp->ApplyServerMana(CurrentMana, MaxMana);
+		}
+	}
+}
+
+void AFWPlayerController::HandleChatReceived(int32 /*SenderId*/, int32 Channel, const FString& SenderName, const FString& Message, bool bIsTeammate)
+{
+	if (!ChatWidgetInstance || Channel < 0 || Channel > FWNet::CHAT_SYSTEM)
+	{
+		return;
+	}
+	ChatWidgetInstance->AddIncomingMessage(static_cast<EFWChatChannel>(Channel), SenderName, Message, bIsTeammate);
+}
+
+void AFWPlayerController::OnLocalPawnBushOverlap(int32 BushId, bool bEntered)
+{
+	if (bEntered)
+	{
+		OverlappingBushIds.AddUnique(BushId);
+	}
+	else
+	{
+		OverlappingBushIds.Remove(BushId);
+	}
+
+	const int32 CurrentBushId = OverlappingBushIds.Num() > 0 ? OverlappingBushIds.Last() : 0;
+	if (CurrentBushId == ReportedBushId)
+	{
+		return;
+	}
+
+	// Offline there's nobody to hide from, so only the server path does anything.
+	UFWNetworkSubsystem* Net = GetNetwork();
+	if (Net && Net->IsServerAuthoritative())
+	{
+		Net->SendBushState(CurrentBushId);
+		ReportedBushId = CurrentBushId;
+	}
+}
+
+void AFWPlayerController::HandlePlayerVisibility(int32 PlayerId, bool bVisible, FVector Location)
+{
+	if (TWeakObjectPtr<AFWCharacter>* Found = RemoteAvatars.Find(PlayerId))
+	{
+		if (AFWCharacter* Avatar = Found->Get())
+		{
+			Avatar->SetActorHiddenInGame(!bVisible);
+			if (bVisible)
+			{
+				// Moves weren't relayed while hidden - head for the latest destination.
+				Avatar->SetRemoteDestination(Location);
+			}
+		}
+	}
+}
