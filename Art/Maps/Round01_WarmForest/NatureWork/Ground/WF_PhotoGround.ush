@@ -1,0 +1,86 @@
+// Photo-derived surface blends for the Work level. P is world centimeters.
+// DX normals use projected world X/Y axes. No displacement is applied.
+struct SoilNoise
+{
+    float Hash(float2 cell)
+    {
+        float3 q = frac(cell.xyx * .1031);
+        q += dot(q, q.yzx + 33.33);
+        return frac((q.x + q.y) * q.z);
+    }
+    float Noise(float2 p)
+    {
+        float2 i = floor(p), f = frac(p);
+        f = f * f * (3 - 2 * f);
+        return lerp(lerp(Hash(i), Hash(i + float2(1,0)), f.x),
+                    lerp(Hash(i + float2(0,1)), Hash(i + 1), f.x), f.y);
+    }
+};
+SoilNoise pattern;
+float2 meters = P.xy * .01;
+float2 flow = float2(pattern.Noise(meters * .18 + 2.3), pattern.Noise(meters * .17 - 17.6)) - .5;
+float2 rotated = float2(.7986 * meters.x - .6018 * meters.y, .6018 * meters.x + .7986 * meters.y);
+float2 uvA = (meters + flow * .35) / max(TileA, .1);
+float2 uvB = rotated / max(TileB, .1) + float2(.31, .71);
+float big = pattern.Noise(meters * .125 + 5.6);
+float medium = pattern.Noise(meters * .67 - 3.7);
+float small = pattern.Noise(meters * 2.2 + 52.3);
+float patch = smoothstep(.26, .76, big * .57 + medium * .31 + small * .12);
+float3 a = Texture2DSample(AlbedoA, AlbedoASampler, uvA).rgb * GradeA;
+float3 b = Texture2DSample(AlbedoB, AlbedoBSampler, uvB).rgb * GradeB;
+float2 na = UnpackNormalMap(Texture2DSample(NormalA, NormalASampler, uvA)).xy;
+float2 nb = UnpackNormalMap(Texture2DSample(NormalB, NormalBSampler, uvB)).xy;
+nb = float2(.7986 * nb.x + .6018 * nb.y, -.6018 * nb.x + .7986 * nb.y);
+float2 armA = Texture2DSample(ArmA, ArmASampler, uvA).rg;
+float2 armB = Texture2DSample(ArmB, ArmBSampler, uvB).rg;
+#if IS_ARENA
+// Mix two footprints of the sand photo so the same small ridges do not align across the arena.
+float2 turned = float2(.377 * meters.x + .9262 * meters.y, -.9262 * meters.x + .377 * meters.y);
+float2 uvAlternate = (turned + flow * .72) / max(TileA * 1.17, .1) + float2(.63, .24);
+float alternate = lerp(.22, .78, smoothstep(.20, .80, pattern.Noise(meters * .68 + 24.8)));
+float3 alternateColor = Texture2DSample(AlbedoA, AlbedoASampler, uvAlternate).rgb * GradeA;
+float2 alternateNormal = UnpackNormalMap(Texture2DSample(NormalA, NormalASampler, uvAlternate)).xy;
+alternateNormal = float2(.377 * alternateNormal.x - .9262 * alternateNormal.y,
+                        .9262 * alternateNormal.x + .377 * alternateNormal.y);
+a = lerp(a, alternateColor, alternate);
+na = lerp(na, alternateNormal, alternate);
+armA = lerp(armA, Texture2DSample(ArmA, ArmASampler, uvAlternate).rg, alternate);
+#endif
+float blend;
+float wear = 0;
+#if IS_ARENA
+    float distanceFromCenter = length(meters);
+    float center = 1 - smoothstep(9.0, ArenaRadius + 1.5, distanceFromCenter);
+    blend = saturate(patch * BlendStrength * lerp(1., .62, center));
+    float2 wearUV = float2(meters.y, -meters.x) / max(WearSpan * ArenaRadius / 18.0, 1.0) + .5;
+    float4 ink = Texture2DSample(WearMask, WearMaskSampler, wearUV);
+    float4 feather = Texture2DSampleLevel(WearMask, WearMaskSampler, wearUV, 2.25);
+    wear = (ink.r * ink.a * .63 + feather.r * feather.a * .37);
+    wear *= (1 - smoothstep(ArenaRadius - .15, ArenaRadius + .35, distanceFromCenter));
+    wear *= (.60 + medium * .32 + small * .08);
+#else
+    blend = lerp(.16, .85, patch) * BlendStrength;
+#endif
+float3 albedo = lerp(a, b, blend) * (.93 + big * .13 + medium * .05);
+#if IS_ARENA
+    float gray = dot(albedo, float3(.2126,.7152,.0722));
+    float3 sandColor = float3(.46, .365, .203);
+    albedo = lerp(albedo, sandColor * clamp(gray / .35, .62, 1.33), .26);
+    albedo *= 1 - wear * WearStrength;
+    albedo *= lerp(float3(1,1,1), float3(1.013,.979,.93), wear);
+#else
+    albedo *= .90 + (big - .5) * .14;
+    float farFade = smoothstep(69.0, 100.0, max(abs(meters.x), abs(meters.y)));
+    albedo = lerp(albedo, albedo * .56 + float3(.020,.030,.010), farFade * .82);
+#endif
+float detailFade = 1.0 - smoothstep(.035, .18, length(fwidth(meters)));
+float2 n = lerp(na, nb, blend) * Relief * lerp(.37, 1.0, detailFade);
+n *= 1 - .43 * wear;
+float3 baseNormal = normalize(Parameters.TangentToWorld[2]);
+float3 alongX = float3(1,0,0) - baseNormal * baseNormal.x;
+float3 alongY = float3(0,1,0) - baseNormal * baseNormal.y;
+SurfaceNormal = normalize(baseNormal + n.x * alongX + n.y * alongY);
+Roughness = clamp(lerp(.86, lerp(armA.y, armB.y, blend), .68) - wear*.045, .68, .99);
+Occlusion = lerp(1., lerp(armA.x, armB.x, blend), AOAmount);
+return saturate(albedo);
+

@@ -1,0 +1,166 @@
+{
+  "status": "prototype_unrigged",
+  "units": "metres",
+  "forward_axis": "+X",
+  "up_axis": "+Z",
+  "height_includes_antlers": true,
+  "assets": [
+    {
+      "name": "Torn_Body",
+      "triangles": 56864,
+      "dimensions_m": [
+        0.9974449276924133,
+        2.5528008937835693,
+        3.200000047683716
+      ],
+      "meshes": 1,
+      "armatures": 0,
+      "texture_sizes": [
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ]
+      ],
+      "pivot": "feet_center",
+      "local_correction": "uniform scale and origin placement",
+      "source_dir": "Torn_Body",
+      "source_fbx": "Torn_Body/Torn_Body.fbx"
+    },
+    {
+      "name": "Veil_Body",
+      "triangles": 42746,
+      "dimensions_m": [
+        0.5745701193809509,
+        1.302987813949585,
+        1.899999976158142
+      ],
+      "meshes": 1,
+      "armatures": 0,
+      "texture_sizes": [
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ]
+      ],
+      "pivot": "feet_center",
+      "local_correction": "uniform scale and origin placement",
+      "source_dir": "Veil_Body",
+      "source_fbx": "Veil_Body/Veil_Body.fbx"
+    },
+    {
+      "name": "Torn_Shield",
+      "triangles": 14643,
+      "dimensions_m": [
+        0.30000001192092896,
+        0.949999988079071,
+        1.25
+      ],
+      "meshes": 1,
+      "armatures": 0,
+      "texture_sizes": [
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ]
+      ],
+      "pivot": "shield_center_provisional",
+      "local_correction": "nonuniform scale to 0.30m depth, 0.95m width, 1.25m height",
+      "source_dir": "Shield_TornMatch_v4/Torn_Shield",
+      "source_fbx": "Shield_TornMatch_v4/Torn_Shield/Torn_Shield.fbx"
+    },
+    {
+      "name": "Veil_Dagger",
+      "triangles": 4784,
+      "dimensions_m": [
+        0.04039138928055763,
+        0.11178082227706909,
+        0.47999998927116394
+      ],
+      "meshes": 1,
+      "armatures": 0,
+      "texture_sizes": [
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ],
+        [
+          2048,
+          2048
+        ]
+      ],
+      "pivot": "grip_center_provisional",
+      "local_correction": "uniform scale and origin placement",
+      "source_dir": "Retexture_v2/Veil_Dagger",
+      "source_fbx": "Retexture_v2/Veil_Dagger/Veil_Dagger.fbx"
+    }
+  ],
+  "limitations": [
+    "Shield generated back does not match attachment bands; rear attachment structure needs manual authoring.",
+    "Shield depth locally compressed to 0.30m.",
+    "Static Unreal preview only. No rigging, animations, custom LOD chain, or gameplay verification."
+  ],
+  "weapon_material_review": {
+    "status": "reference_fidelity_insufficient",
+    "material_links": "BaseColor, Normal, Roughness, Metallic connected in source GLB and delivered FBX/GLB/blend",
+    "issues": [
+      "Shield bark colour separation and amber cracks weak or absent.",
+      "Dagger silver leaf veins insufficiently reproduced."
+    ],
+    "paid_retexture_started": false,
+    "retexture_v2": {
+      "path": "Retexture_v2/Veil_Dagger",
+      "status": "partial_improvement_reference_fidelity_insufficient",
+      "credits": 60
+    },
+    "shield_current_candidate": {
+      "path": "Shield_TornMatch_v4/Torn_Shield",
+      "status": "user_review_pending",
+      "cost_credits": 0
+    }
+  },
+  "unreal_preview_map": "/Game/Map/L_CharacterPreview_TornVeil"
+}
